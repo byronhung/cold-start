@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coldstart.app.alarm.Weekdays
 import com.coldstart.app.ui.components.RepeatLine
@@ -130,11 +131,20 @@ private fun AlarmRow(row: AlarmRowUi, onClick: () -> Unit, onToggle: (Boolean) -
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(
-                row.time,
-                style = ColdText.alarmTime,
-                color = if (row.enabled) ColdColors.Ink else ColdColors.InkMute,
-            )
+            Row {
+                val colour = if (row.enabled) ColdColors.Ink else ColdColors.InkMute
+                Text(row.time, style = ColdText.alarmTime, color = colour, modifier = Modifier.alignByBaseline())
+                if (row.period != null) {
+                    Text(
+                        row.period,
+                        style = ColdText.label.copy(fontSize = 14.sp),
+                        color = colour,
+                        modifier = Modifier
+                            .alignByBaseline()
+                            .padding(start = 6.dp),
+                    )
+                }
+            }
             RepeatLine(row.repeatDays, row.label)
         }
         Switch(checked = row.enabled, onCheckedChange = onToggle, colors = coldSwitchColors())
@@ -147,11 +157,11 @@ private fun AlarmListPreview() = ColdStartTheme {
     AlarmListContent(
         ui = AlarmListUi(
             rows = listOf(
-                AlarmRowUi(1, "06:30", Weekdays.WEEKDAYS, "", true),
-                AlarmRowUi(2, "08:15", Weekdays.WEEKEND, "", true),
-                AlarmRowUi(3, "05:45", Weekdays.NONE, "Gym", false),
+                AlarmRowUi(1, "6:30", "AM", Weekdays.WEEKDAYS, "", true),
+                AlarmRowUi(2, "8:15", "AM", Weekdays.WEEKEND, "", true),
+                AlarmRowUi(3, "5:45", "PM", Weekdays.NONE, "Gym", false),
             ),
-            nextSummary = "Next: tomorrow at 06:30 · in 7 h 49 m",
+            nextSummary = "Next: tomorrow at 6:30 AM · in 7 h 49 m",
         ),
         onAdd = {}, onEdit = {}, onToggle = { _, _ -> },
     )

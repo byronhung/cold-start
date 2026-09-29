@@ -1,5 +1,6 @@
 package com.coldstart.app.ui.edit
 
+import android.text.format.DateFormat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +34,7 @@ import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.coldstart.app.alarm.Weekdays
@@ -76,7 +78,9 @@ private fun AlarmEditContent(
     onDelete: () -> Unit,
 ) {
     // The picker owns the time while editing; it's only read back on Save.
-    val time = rememberTimePickerState(initialHour = draft.hour, initialMinute = draft.minute, is24Hour = true)
+    // Follow the phone's clock setting: AM/PM switch on a 12-hour phone, 0–23 dial on a 24-hour one.
+    val is24Hour = DateFormat.is24HourFormat(LocalContext.current)
+    val time = rememberTimePickerState(initialHour = draft.hour, initialMinute = draft.minute, is24Hour = is24Hour)
 
     Column(
         modifier = Modifier
@@ -111,6 +115,11 @@ private fun AlarmEditContent(
                 timeSelectorUnselectedContainerColor = ColdColors.Surface,
                 timeSelectorSelectedContentColor = ColdColors.Accent,
                 timeSelectorUnselectedContentColor = ColdColors.Ink,
+                periodSelectorBorderColor = ColdColors.Line,
+                periodSelectorSelectedContainerColor = ColdColors.Accent.copy(alpha = 0.18f),
+                periodSelectorUnselectedContainerColor = ColdColors.Surface,
+                periodSelectorSelectedContentColor = ColdColors.Accent,
+                periodSelectorUnselectedContentColor = ColdColors.InkDim,
             ),
         )
 

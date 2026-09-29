@@ -80,4 +80,20 @@ class NextTriggerTest {
             describeNext(LocalDateTime.of(2026, 10, 5, 6, 30), friday2241),
         )
     }
+
+    @Test fun `12-hour times read the way the phone shows them`() {
+        assertEquals("12:05 AM", formatTime(0, 5, is24Hour = false))
+        assertEquals("6:30 AM", formatTime(6, 30, is24Hour = false))
+        assertEquals("12:00 PM", formatTime(12, 0, is24Hour = false))
+        assertEquals("6:30 PM", formatTime(18, 30, is24Hour = false))
+        assertEquals("18:30", formatTime(18, 30))
+    }
+
+    @Test fun `summary follows the 12-hour setting`() {
+        val alarm = Alarm(hour = 6, minute = 30)
+        assertEquals(
+            "Next: tomorrow at 6:30 AM · in 7 h 49 m",
+            nextAlarmSummary(listOf(alarm), friday2241, is24Hour = false),
+        )
+    }
 }

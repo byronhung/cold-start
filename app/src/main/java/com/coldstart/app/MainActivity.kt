@@ -1,6 +1,7 @@
 package com.coldstart.app
 
 import android.os.Bundle
+import android.text.format.DateFormat
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -30,7 +31,7 @@ class MainActivity : ComponentActivity() {
                 NavHost(navController = nav, startDestination = "list") {
                     composable("list") {
                         val vm: AlarmListViewModel = viewModel(
-                            factory = viewModelFactory { initializer { AlarmListViewModel(repository) } },
+                            factory = viewModelFactory { initializer { AlarmListViewModel(repository, DateFormat.is24HourFormat(this@MainActivity)) } },
                         )
                         AlarmListScreen(
                             viewModel = vm,

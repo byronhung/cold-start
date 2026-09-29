@@ -42,15 +42,23 @@ fun nextTrigger(hour: Int, minute: Int, repeatDays: Int, now: LocalDateTime): Lo
 
 fun Alarm.nextTrigger(now: LocalDateTime): LocalDateTime = nextTrigger(hour, minute, repeatDays, now)
 
-fun formatTime(hour: Int, minute: Int): String = "%02d:%02d".format(hour, minute)
+/** "06:30" on a 24-hour phone, "6:30 AM" on a 12-hour one. */
+fun formatTime(hour: Int, minute: Int, is24Hour: Boolean = true): String =
+    if (is24Hour) "%02d:%02d".format(hour, minute) else "${clockDigits(hour, minute, false)} ${period(hour)}"
+
+/** The digits alone: "06:30", or "6:30" on a 12-hour phone (where 0:00 is 12:00). */
+fun clockDigits(hour: Int, minute: Int, is24Hour: Boolean): String =
+    if (is24Hour) "%02d:%02d".format(hour, minute) else "%d:%02d".format((hour + 11) % 12 + 1, minute)
+
+fun period(hour: Int): String = if (hour < 12) "AM" else "PM"
 
 /** "Next: tomorrow at 06:30 · in 7 h 49 m", or null if every alarm is off. */
-fun nextAlarmSummary(alarms: List<Alarm>, now: LocalDateTime): String? {
+fun nextAlarmSummary(alarms: List<Alarm>, now: LocalDateTime, is24Hour: Boolean = true): String? {
     val next = alarms.filter { it.enabled }.minOfOrNull { it.nextTrigger(now) } ?: return null
-    return describeNext(next, now)
+    return describeNext(next, now, is24Hour)
 }
 
-fun describeNext(next: LocalDateTime, now: LocalDateTime): String {
+fun describeNext(next: LocalDateTime, now: LocalDateTime, is24Hour: Boolean = true): String {
     val day = when (ChronoUnit.DAYS.between(now.toLocalDate(), next.toLocalDate())) {
         0L -> "today"
         1L -> "tomorrow"
@@ -63,5 +71,5 @@ fun describeNext(next: LocalDateTime, now: LocalDateTime): String {
         minutes >= 60 -> "${minutes / 60} h ${minutes % 60} m"
         else -> "$minutes m"
     }
-    return "Next: $day at ${formatTime(next.hour, next.minute)} · in $until"
+    return "Next: $day at ${formatTime(next.hour, next.minute, is24Hour)} · in $until"
 }
