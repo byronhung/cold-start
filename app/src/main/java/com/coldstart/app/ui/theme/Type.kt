@@ -98,6 +98,8 @@ object ColdText {
 
 /** Material's slots, pointed at our faces, so any plain `Text()` is Instrument Sans by default. */
 val ColdTypography = Typography(
+    // The time picker's big hour/minute boxes read this slot.
+    displayLarge = ColdText.clock,
     bodyLarge = ColdText.body,
     bodyMedium = ColdText.body.copy(fontSize = 14.sp, lineHeight = 20.sp),
     bodySmall = ColdText.caption,
