@@ -18,8 +18,16 @@ import com.coldstart.app.ui.edit.AlarmEditViewModel
 import com.coldstart.app.ui.list.AlarmListScreen
 import com.coldstart.app.ui.list.AlarmListViewModel
 import com.coldstart.app.ui.theme.ColdStartTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    override fun onResume() {
+        super.onResume()
+        // A permission granted from the setup card may have made scheduling possible.
+        val app = application as ColdStartApp
+        app.appScope.launch { app.repository.rescheduleAll() }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

@@ -1,0 +1,72 @@
+package com.coldstart.app.ring
+
+import com.coldstart.app.data.AlarmRepository
+import com.coldstart.app.data.RoundType
+import com.coldstart.app.data.WakeOutcome
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+
+/** Everything the ringing screen needs, fixed when the alarm fires. */
+data class RingSession(
+    val alarmId: Long,
+    val wakeId: Long,
+    val hour: Int,
+    val minute: Int,
+    val label: String,
+    val rounds: List<RoundType>,
+    val levels: Map<RoundType, Int>,
+    val qrCode: String?,
+)
+
+/** A solved round, before it's written to the database. */
+data class RoundResultDraft(val type: RoundType, val level: Int, val solveMs: Long, val misses: Int)
+
+sealed interface RingState {
+    data object Idle : RingState
+
+    /** The service has woken up and is reading the alarm from the database. */
+    data object Starting : RingState
+
+    data class Ringing(val session: RingSession) : RingState
+}
+
+/**
+ * The single source of truth for "is an alarm ringing right now". The service drives it, the
+ * ringing screen reads it, and [finish] is the only way a ring ends: solved, given up or timed out.
+ *
+ * Grit's `00:00` ghost came from a screen trusting a stale copy of this fact. Here every reader
+ * asks this one object, and a screen that finds [RingState.Idle] closes itself.
+ */
+class RingController(
+    private val repository: AlarmRepository,
+    private val scope: CoroutineScope,
+) {
+    private val _state = MutableStateFlow<RingState>(RingState.Idle)
+    val state: StateFlow<RingState> = _state.asStateFlow()
+
+    val isActive: Boolean get() = _state.value != RingState.Idle
+
+    fun markStarting() {
+        _state.value = RingState.Starting
+    }
+
+    fun begin(session: RingSession) {
+        _state.value = RingState.Ringing(session)
+    }
+
+    /** The alarm turned out not to need ringing (deleted or switched off in the meantime). */
+    fun abort() {
+        _state.value = RingState.Idle
+    }
+
+    fun finish(outcome: WakeOutcome, results: List<RoundResultDraft>) {
+        val ringing = _state.value as? RingState.Ringing
+        _state.value = RingState.Idle
+        if (ringing != null) {
+            scope.launch { repository.finishWake(ringing.session.wakeId, outcome, results) }
+        }
+    }
+}

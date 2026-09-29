@@ -83,6 +83,7 @@ private fun AlarmListContent(
                         color = ColdColors.InkMute,
                     )
                     Spacer(Modifier.height(Space.lg))
+                    SetupCard()
                 }
             }
 
