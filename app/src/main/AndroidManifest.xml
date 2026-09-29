@@ -21,11 +21,9 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
-    <!-- QR round: scan a code you placed away from the bed. -->
-    <uses-permission android:name="android.permission.CAMERA" />
-    <uses-feature
-        android:name="android.hardware.camera"
-        android:required="false" />
+    <!-- QR round is parked (QR_ROUND_ENABLED = false). To turn it back on, restore:
+         <uses-permission android:name="android.permission.CAMERA" />
+         <uses-feature android:name="android.hardware.camera" android:required="false" /> -->
 
     <application
         android:name=".ColdStartApp"

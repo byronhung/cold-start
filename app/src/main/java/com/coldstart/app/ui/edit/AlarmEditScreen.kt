@@ -156,7 +156,7 @@ private fun AlarmEditContent(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        ScanSection(draft.qrCode, onScan, onRemoveCode)
+        if (QR_ROUND_ENABLED) ScanSection(draft.qrCode, onScan, onRemoveCode)
 
         Column(verticalArrangement = Arrangement.spacedBy(Space.sm)) {
             Button(
@@ -207,6 +207,13 @@ private fun DayPicker(repeatDays: Int, onToggle: (Int) -> Unit) {
         }
     }
 }
+
+/**
+ * The QR round (chunk 11) is built but switched off: Byron parked it on 29 Sep. Flip this to
+ * bring back the "Finish with a scan" section, and re-add the CAMERA permission to the manifest.
+ * No alarm can have a code while it's off, so the ringing screen never reaches the QR round.
+ */
+const val QR_ROUND_ENABLED = false
 
 /** Optional last round: walk to a code you registered and scan it. */
 @Composable
