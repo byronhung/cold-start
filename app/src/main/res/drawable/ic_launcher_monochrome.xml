@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 13+ themed icons: one colour, the system tints it. Same shapes as the foreground. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M64.9,34.44 A19,19 0 1,1 43.1,34.44"
+        android:strokeWidth="6"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M54,26 L54,47"
+        android:strokeWidth="6"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round" />
+    <!-- hour ticks at 3, 6 and 9: what makes the power symbol a clock -->
+    <path
+        android:pathData="M64.5,50 L67.5,50 M54,60.5 L54,63.5 M40.5,50 L43.5,50"
+        android:strokeWidth="2.5"
+        android:strokeColor="#80FFFFFF"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M41,77h4a2,2 0,0 1,0 4h-4a2,2 0,0 1,0 -4zM52,77h4a2,2 0,0 1,0 4h-4a2,2 0,0 1,0 -4z" />
+    <path
+        android:fillColor="#80FFFFFF"
+        android:pathData="M63,77h4a2,2 0,0 1,0 4h-4a2,2 0,0 1,0 -4z" />
+</vector>

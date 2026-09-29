@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -18,10 +20,40 @@ android {
         versionName = "0.1"
     }
 
+    // Release key lives outside the repo; keystore.properties (git-ignored) says where.
+    val keystoreFile = rootProject.file("keystore.properties")
+    val releaseSigning = if (keystoreFile.exists()) {
+        val props = Properties().apply { keystoreFile.inputStream().use { load(it) } }
+        signingConfigs.create("release") {
+            storeFile = file(props.getProperty("storeFile"))
+            storePassword = props.getProperty("storePassword")
+            keyAlias = props.getProperty("keyAlias")
+            keyPassword = props.getProperty("keyPassword")
+        }
+    } else {
+        null
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8: strips unused library code. Cuts the APK from ~44 MB to a few.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = releaseSigning
         }
+        // Same shrunk code as release, installable next to the everyday debug build, with the
+        // adb test receiver. For proving R8 didn't break anything before an APK goes out.
+        create("releaseCheck") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".check"
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += "release"
+        }
+    }
+    sourceSets.getByName("releaseCheck") {
+        java.srcDir("src/debug/java")
+        manifest.srcFile("src/debug/AndroidManifest.xml")
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -46,7 +78,8 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-    // QR round (chunk 11): camera preview + on-device barcode reading, no network.
+    // QR round (chunk 11, parked): camera preview + barcode reading. The Play-services flavour of
+    // ML Kit downloads its model on demand instead of bundling ~19 MB of native code in the APK.
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)

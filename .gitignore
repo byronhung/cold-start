@@ -9,3 +9,7 @@
 .externalNativeBuild
 .cxx
 .kotlin/
+
+# release signing secrets
+/keystore.properties
+/dist/
