@@ -13,7 +13,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import com.coldstart.app.ui.edit.AlarmEditScreen
+import com.coldstart.app.ui.history.HistoryScreen
+import com.coldstart.app.ui.history.HistoryViewModel
+import com.coldstart.app.ui.scan.ScanScreen
 import com.coldstart.app.ui.edit.AlarmEditViewModel
 import com.coldstart.app.ui.list.AlarmListScreen
 import com.coldstart.app.ui.list.AlarmListViewModel
@@ -45,6 +51,23 @@ class MainActivity : ComponentActivity() {
                             viewModel = vm,
                             onAdd = { nav.navigate("edit") },
                             onEdit = { id -> nav.navigate("edit?id=$id") },
+                            onHistory = { nav.navigate("history") },
+                        )
+                    }
+                    composable("history") {
+                        val vm: HistoryViewModel = viewModel(
+                            factory = viewModelFactory { initializer { HistoryViewModel(repository, DateFormat.is24HourFormat(this@MainActivity)) } },
+                        )
+                        HistoryScreen(viewModel = vm, onBack = { nav.popBackStack() })
+                    }
+                    composable("scan") {
+                        ScanScreen(
+                            // Hand the code back to the edit screen underneath, then return to it.
+                            onCode = { code ->
+                                nav.previousBackStackEntry?.savedStateHandle?.set(SCANNED_CODE, code)
+                                if (nav.currentDestination?.route == "scan") nav.popBackStack()
+                            },
+                            onBack = { nav.popBackStack() },
                         )
                     }
                     composable(
@@ -55,8 +78,16 @@ class MainActivity : ComponentActivity() {
                         val vm: AlarmEditViewModel = viewModel(
                             factory = viewModelFactory { initializer { AlarmEditViewModel(repository, id) } },
                         )
+                        val scanned by entry.savedStateHandle.getStateFlow<String?>(SCANNED_CODE, null).collectAsState()
+                        LaunchedEffect(scanned) {
+                            scanned?.let {
+                                vm.setQrCode(it)
+                                entry.savedStateHandle[SCANNED_CODE] = null
+                            }
+                        }
                         AlarmEditScreen(
                             viewModel = vm,
+                            onScan = { nav.navigate("scan") },
                             // Only pop if we're still on the edit screen, so a double tap can't pop the list too.
                             onDone = {
                                 if (nav.currentDestination?.route?.startsWith("edit") == true) nav.popBackStack()
@@ -66,5 +97,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private companion object {
+        const val SCANNED_CODE = "scannedCode"
     }
 }

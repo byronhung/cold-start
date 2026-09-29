@@ -16,6 +16,8 @@ data class EditDraft(
     val minute: Int,
     val repeatDays: Int,
     val label: String,
+    /** The code the last round asks you to scan, or null for no scan round. */
+    val qrCode: String?,
     val isNew: Boolean,
 )
 
@@ -39,13 +41,13 @@ class AlarmEditViewModel(
             viewModelScope.launch {
                 val alarm = repository.get(alarmId)
                 original = alarm
-                draft = alarm?.let { EditDraft(it.hour, it.minute, it.repeatDays, it.label, isNew = false) }
+                draft = alarm?.let { EditDraft(it.hour, it.minute, it.repeatDays, it.label, it.qrCode, isNew = false) }
                     ?: newDraft()
             }
         }
     }
 
-    private fun newDraft() = EditDraft(hour = 7, minute = 0, repeatDays = Weekdays.WEEKDAYS, label = "", isNew = true)
+    private fun newDraft() = EditDraft(hour = 7, minute = 0, repeatDays = Weekdays.WEEKDAYS, label = "", qrCode = null, isNew = true)
 
     /** [dayIndex] 0 = Monday … 6 = Sunday. */
     fun toggleDay(dayIndex: Int) {
@@ -54,6 +56,10 @@ class AlarmEditViewModel(
 
     fun setLabel(value: String) {
         draft = draft?.copy(label = value.take(MAX_LABEL))
+    }
+
+    fun setQrCode(code: String?) {
+        draft = draft?.copy(qrCode = code?.trim()?.ifEmpty { null })
     }
 
     /** Saving always turns the alarm on: you just set it, so you want it. */
@@ -69,6 +75,7 @@ class AlarmEditViewModel(
                     minute = minute,
                     repeatDays = d.repeatDays,
                     label = d.label.trim(),
+                    qrCode = d.qrCode,
                     enabled = true,
                 ),
             )

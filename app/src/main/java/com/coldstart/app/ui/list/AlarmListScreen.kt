@@ -21,6 +21,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -43,9 +44,10 @@ fun AlarmListScreen(
     viewModel: AlarmListViewModel,
     onAdd: () -> Unit,
     onEdit: (Long) -> Unit,
+    onHistory: () -> Unit,
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
-    AlarmListContent(ui, onAdd, onEdit, viewModel::setEnabled)
+    AlarmListContent(ui, onAdd, onEdit, viewModel::setEnabled, onHistory)
 }
 
 @Composable
@@ -54,6 +56,7 @@ private fun AlarmListContent(
     onAdd: () -> Unit,
     onEdit: (Long) -> Unit,
     onToggle: (Long, Boolean) -> Unit,
+    onHistory: () -> Unit = {},
 ) {
     Box(
         Modifier
@@ -71,7 +74,12 @@ private fun AlarmListContent(
         ) {
             item {
                 Column {
-                    Text("Alarms", style = ColdText.title, color = ColdColors.Ink)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Alarms", style = ColdText.title, color = ColdColors.Ink, modifier = Modifier.weight(1f))
+                        TextButton(onClick = onHistory) {
+                            Text("History", style = ColdText.body, color = ColdColors.InkDim)
+                        }
+                    }
                     Spacer(Modifier.height(Space.xs))
                     Text(
                         text = when {

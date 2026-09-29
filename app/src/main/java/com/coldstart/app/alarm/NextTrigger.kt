@@ -52,6 +52,16 @@ fun clockDigits(hour: Int, minute: Int, is24Hour: Boolean): String =
 
 fun period(hour: Int): String = if (hour < 12) "AM" else "PM"
 
+/** "24 s", "1 m 12 s", "1 h 3 m". */
+fun formatDuration(ms: Long): String {
+    val seconds = ms / 1000
+    return when {
+        seconds >= 3600 -> "${seconds / 3600} h ${(seconds % 3600) / 60} m"
+        seconds >= 60 -> "${seconds / 60} m ${seconds % 60} s"
+        else -> "$seconds s"
+    }
+}
+
 /** "Next: tomorrow at 06:30 · in 7 h 49 m", or null if every alarm is off. */
 fun nextAlarmSummary(alarms: List<Alarm>, now: LocalDateTime, is24Hour: Boolean = true): String? {
     val next = alarms.filter { it.enabled }.minOfOrNull { it.nextTrigger(now) } ?: return null

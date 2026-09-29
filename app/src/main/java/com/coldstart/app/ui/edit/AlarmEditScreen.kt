@@ -1,6 +1,7 @@
 package com.coldstart.app.ui.edit
 
 import android.text.format.DateFormat
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +25,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -46,7 +48,7 @@ import com.coldstart.app.ui.theme.Space
 import java.time.DayOfWeek
 
 @Composable
-fun AlarmEditScreen(viewModel: AlarmEditViewModel, onDone: () -> Unit) {
+fun AlarmEditScreen(viewModel: AlarmEditViewModel, onScan: () -> Unit, onDone: () -> Unit) {
     val draft = viewModel.draft
     if (draft == null) {
         // Existing alarm still loading: plain ground, no flash of a default form.
@@ -62,6 +64,8 @@ fun AlarmEditScreen(viewModel: AlarmEditViewModel, onDone: () -> Unit) {
         onBack = onDone,
         onToggleDay = viewModel::toggleDay,
         onLabel = viewModel::setLabel,
+        onScan = onScan,
+        onRemoveCode = { viewModel.setQrCode(null) },
         onSave = { h, m -> viewModel.save(h, m, onDone) },
         onDelete = { viewModel.delete(onDone) },
     )
@@ -74,6 +78,8 @@ private fun AlarmEditContent(
     onBack: () -> Unit,
     onToggleDay: (Int) -> Unit,
     onLabel: (String) -> Unit,
+    onScan: () -> Unit,
+    onRemoveCode: () -> Unit,
     onSave: (Int, Int) -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -150,6 +156,8 @@ private fun AlarmEditContent(
             modifier = Modifier.fillMaxWidth(),
         )
 
+        ScanSection(draft.qrCode, onScan, onRemoveCode)
+
         Column(verticalArrangement = Arrangement.spacedBy(Space.sm)) {
             Button(
                 onClick = { onSave(time.hour, time.minute) },
@@ -195,6 +203,42 @@ private fun DayPicker(repeatDays: Int, onToggle: (Int) -> Unit) {
                     style = ColdText.label,
                     color = if (on) ColdColors.Ground else ColdColors.InkDim,
                 )
+            }
+        }
+    }
+}
+
+/** Optional last round: walk to a code you registered and scan it. */
+@Composable
+private fun ScanSection(qrCode: String?, onScan: () -> Unit, onRemove: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(Space.sm)) {
+        Text("FINISH WITH A SCAN", style = ColdText.label, color = ColdColors.InkMute)
+        if (qrCode == null) {
+            Text(
+                "Optional. Register a barcode or QR code away from your bed. The last round is walking to it and scanning it.",
+                style = ColdText.caption,
+                color = ColdColors.InkMute,
+            )
+            OutlinedButton(
+                onClick = onScan,
+                shape = ColdShapes.small,
+                border = BorderStroke(1.dp, ColdColors.Line),
+            ) { Text("Register a code", style = ColdText.body, color = ColdColors.Ink) }
+        } else {
+            Text(
+                "Code registered. This alarm ends with scanning it.",
+                style = ColdText.caption,
+                color = ColdColors.Accent,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
+                OutlinedButton(
+                    onClick = onScan,
+                    shape = ColdShapes.small,
+                    border = BorderStroke(1.dp, ColdColors.Line),
+                ) { Text("Use a different code", style = ColdText.caption, color = ColdColors.Ink) }
+                TextButton(onClick = onRemove) {
+                    Text("Remove", style = ColdText.caption, color = ColdColors.InkMute)
+                }
             }
         }
     }
