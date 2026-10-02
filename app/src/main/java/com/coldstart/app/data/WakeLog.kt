@@ -1,5 +1,6 @@
 package com.coldstart.app.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -16,6 +17,17 @@ data class WakeLog(
     val outcome: WakeOutcome? = null,
     /** The first puzzle type that morning, so tomorrow can open with a different one. */
     val opener: RoundType? = null,
+    @ColumnInfo(defaultValue = "0") val checksPassed: Int = 0,
+    /** Wake checks missed: each one re-rang the alarm. */
+    @ColumnInfo(defaultValue = "0") val checksMissed: Int = 0,
+)
+
+/** App-wide settings: one row, id 0. */
+@Entity(tableName = "settings")
+data class AppSettings(
+    @PrimaryKey val id: Int = 0,
+    /** The barcode every "finish with a scan" alarm asks for. Null until registered. */
+    val wakeCode: String? = null,
 )
 
 /** One solved puzzle round. Adaptive difficulty reads these. */

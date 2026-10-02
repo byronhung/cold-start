@@ -1,8 +1,8 @@
 package com.coldstart.app.puzzle
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,16 +20,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.coldstart.app.ui.theme.ColdColors
+import com.coldstart.app.ui.components.springClick
 import com.coldstart.app.ui.theme.ColdShapes
 import com.coldstart.app.ui.theme.ColdText
-import com.coldstart.app.ui.theme.Space
+import com.coldstart.app.ui.theme.Sun
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 
 /**
- * Cells light for two seconds, then go dark: tap them back. A wrong tap clears your picks and
+ * Cells glow amber for two seconds, then go dark: tap them back. A wrong tap clears your picks and
  * shows the same pattern again, so tapping every cell can't brute-force it.
  */
 @Composable
@@ -67,23 +73,34 @@ fun PatternPuzzle(level: Int, onMiss: () -> Unit, onSolved: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Space.md),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Text(
-            if (showing) "Remember these" else "Tap the ones that lit up",
-            style = ColdText.prompt,
-            color = ColdColors.InkDim,
-        )
-        SquareGrid(size = spec.gridSize, gap = 10, modifier = Modifier.padding(horizontal = Space.lg)) { i ->
+        PuzzlePrompt(if (showing) "Remember these" else "Tap the ones that lit up")
+        SquareGrid(
+            size = spec.gridSize,
+            gap = 10,
+            modifier = Modifier
+                .padding(horizontal = 12.dp)
+                .shakeOn(misses),
+        ) { i ->
             val on = (showing && i in spec.lit) || i in picked
+            val glow by animateFloatAsState(if (on) 1f else 0f, tween(250), label = "cell")
             Box(
                 Modifier
                     .fillMaxSize()
-                    .background(if (on) ColdColors.Accent else ColdColors.Surface, ColdShapes.small)
-                    .border(1.dp, if (on) ColdColors.Accent else ColdColors.Line, ColdShapes.small)
-                    .clickable(enabled = !showing) { tap(i) },
+                    .springClick(0.9f, enabled = !showing) { tap(i) }
+                    .shadow((14 * glow).dp, ColdShapes.small, ambientColor = Sun.AmberLight, spotColor = Sun.AmberLight)
+                    .clip(ColdShapes.small)
+                    .background(Color.White.copy(alpha = 0.08f))
+                    .drawBehind { drawRect(Sun.amberBrush, alpha = glow) }
+                    .semantics { contentDescription = "Cell ${i + 1}" },
             )
         }
+        Text(
+            if (showing) "Watch…" else "${picked.size} of ${spec.lit.size}",
+            style = ColdText.caption.copy(fontSize = ColdText.label.fontSize * 1.1f),
+            color = Sun.OnGlass.copy(alpha = 0.6f),
+        )
         MissNote(misses, text = "Not that one. Watch again.")
     }
 }

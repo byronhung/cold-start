@@ -2,6 +2,6 @@
 <resources>
     <!-- Dark window background so launch doesn't flash white before Compose draws. -->
     <style name="Theme.ColdStart" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/ground</item>
+        <item name="android:windowBackground">@color/sky_night</item>
     </style>
 </resources>

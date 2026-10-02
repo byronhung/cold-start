@@ -22,10 +22,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.core.content.ContextCompat
-import com.coldstart.app.ui.theme.ColdColors
+import com.coldstart.app.ui.theme.Sun
+import androidx.compose.ui.unit.dp
 import com.coldstart.app.ui.theme.ColdShapes
 import com.coldstart.app.ui.theme.ColdText
-import com.coldstart.app.ui.theme.Space
 
 /**
  * The last round, when an alarm has a registered code: get out of bed, walk to it, scan it.
@@ -46,15 +46,15 @@ fun QrPuzzle(expected: String, onMiss: () -> Unit, onSolved: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Space.md),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Walk to your code and scan it", style = ColdText.prompt, color = ColdColors.InkDim)
+        PuzzlePrompt("Walk to your wake-up code and scan it")
         if (!hasCamera) {
             Text(
                 "Cold Start isn't allowed to use the camera, so this round can't run. Hold to give up, " +
-                    "then allow the camera from the alarm's edit screen.",
+                    "then allow the camera when you register your code in Settings.",
                 style = ColdText.caption,
-                color = ColdColors.InkMute,
+                color = Sun.OnGlass.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
             )
             return@Column
@@ -75,10 +75,10 @@ fun QrPuzzle(expected: String, onMiss: () -> Unit, onSolved: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .clip(ColdShapes.medium),
+                .clip(ColdShapes.button),
         )
         TextButton(onClick = { torch = !torch }) {
-            Text(if (torch) "Torch off" else "Torch on", style = ColdText.body, color = ColdColors.Ink)
+            Text(if (torch) "Torch off" else "Torch on", style = ColdText.body, color = Sun.OnGlass)
         }
         MissNote(misses, text = "That's a different code.")
     }

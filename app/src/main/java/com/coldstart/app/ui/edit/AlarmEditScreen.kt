@@ -1,7 +1,6 @@
 package com.coldstart.app.ui.edit
 
 import android.text.format.DateFormat
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -11,242 +10,274 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.TimePickerDefaults
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coldstart.app.alarm.Weekdays
-import com.coldstart.app.ui.components.DAY_LETTERS
-import com.coldstart.app.ui.theme.ColdColors
+import com.coldstart.app.alarm.formatTime
+import com.coldstart.app.ui.components.AmberButton
+import com.coldstart.app.ui.components.DayPill
+import com.coldstart.app.ui.components.GlassCard
+import com.coldstart.app.ui.components.SectionLabel
+import com.coldstart.app.ui.components.Segmented
+import com.coldstart.app.ui.components.SkyBackground
+import com.coldstart.app.ui.components.SpringToggle
+import com.coldstart.app.ui.components.WheelColumn
+import com.coldstart.app.ui.components.springClick
 import com.coldstart.app.ui.theme.ColdShapes
 import com.coldstart.app.ui.theme.ColdText
+import com.coldstart.app.ui.theme.LocalSky
+import com.coldstart.app.ui.theme.Skies
 import com.coldstart.app.ui.theme.Space
 import java.time.DayOfWeek
+import java.time.LocalTime
 
 @Composable
-fun AlarmEditScreen(viewModel: AlarmEditViewModel, onScan: () -> Unit, onDone: () -> Unit) {
-    val draft = viewModel.draft
-    if (draft == null) {
-        // Existing alarm still loading: plain ground, no flash of a default form.
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(ColdColors.Ground),
+fun AlarmEditScreen(viewModel: AlarmEditViewModel, onOpenSettings: () -> Unit, onDone: () -> Unit) {
+    val wakeCode by viewModel.wakeCode.collectAsStateWithLifecycle()
+    SkyBackground(Skies.forHour(LocalTime.now().hour)) {
+        val draft = viewModel.draft ?: return@SkyBackground
+        AlarmEditContent(
+            draft = draft,
+            hasWakeCode = wakeCode != null,
+            onCancel = onDone,
+            onSave = { viewModel.save(onDone) },
+            onTime = viewModel::setTime,
+            onToggleDay = viewModel::toggleDay,
+            onChecks = viewModel::setWakeChecks,
+            onScan = viewModel::setFinishWithScan,
+            onLabel = viewModel::setLabel,
+            onOpenSettings = onOpenSettings,
+            onDelete = { viewModel.delete(onDone) },
         )
-        return
     }
-    AlarmEditContent(
-        draft = draft,
-        onBack = onDone,
-        onToggleDay = viewModel::toggleDay,
-        onLabel = viewModel::setLabel,
-        onScan = onScan,
-        onRemoveCode = { viewModel.setQrCode(null) },
-        onSave = { h, m -> viewModel.save(h, m, onDone) },
-        onDelete = { viewModel.delete(onDone) },
-    )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+private val DAY_LETTERS = listOf("M", "T", "W", "T", "F", "S", "S")
+private val DAY_NAMES = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+
 @Composable
 private fun AlarmEditContent(
     draft: EditDraft,
-    onBack: () -> Unit,
+    hasWakeCode: Boolean,
+    onCancel: () -> Unit,
+    onSave: () -> Unit,
+    onTime: (Int, Int) -> Unit,
     onToggleDay: (Int) -> Unit,
+    onChecks: (Int) -> Unit,
+    onScan: (Boolean) -> Unit,
     onLabel: (String) -> Unit,
-    onScan: () -> Unit,
-    onRemoveCode: () -> Unit,
-    onSave: (Int, Int) -> Unit,
+    onOpenSettings: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    // The picker owns the time while editing; it's only read back on Save.
-    // Follow the phone's clock setting: AM/PM switch on a 12-hour phone, 0–23 dial on a 24-hour one.
+    val sky = LocalSky.current
     val is24Hour = DateFormat.is24HourFormat(LocalContext.current)
-    val time = rememberTimePickerState(initialHour = draft.hour, initialMinute = draft.minute, is24Hour = is24Hour)
 
     Column(
-        modifier = Modifier
+        Modifier
             .fillMaxSize()
-            .background(ColdColors.Ground)
             .safeDrawingPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = Space.screen, vertical = Space.lg),
-        verticalArrangement = Arrangement.spacedBy(Space.xl),
+            .imePadding(),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = ColdColors.Ink)
-            }
+        Row(
+            Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "Cancel",
+                style = ColdText.prompt,
+                color = sky.dim,
+                modifier = Modifier
+                    .springClick(0.92f, onClick = onCancel)
+                    .padding(vertical = 10.dp, horizontal = 4.dp),
+            )
             Text(
                 if (draft.isNew) "New alarm" else "Edit alarm",
-                style = ColdText.title,
-                color = ColdColors.Ink,
+                style = ColdText.header,
+                color = sky.ink,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f),
             )
+            AmberButton("Save", onSave, height = 40.dp)
         }
 
-        TimePicker(
-            state = time,
-            modifier = Modifier.align(Alignment.CenterHorizontally),
-            colors = TimePickerDefaults.colors(
-                clockDialColor = ColdColors.Surface,
-                clockDialSelectedContentColor = ColdColors.Ground,
-                clockDialUnselectedContentColor = ColdColors.InkDim,
-                selectorColor = ColdColors.Accent,
-                containerColor = ColdColors.Ground,
-                timeSelectorSelectedContainerColor = ColdColors.Accent.copy(alpha = 0.18f),
-                timeSelectorUnselectedContainerColor = ColdColors.Surface,
-                timeSelectorSelectedContentColor = ColdColors.Accent,
-                timeSelectorUnselectedContentColor = ColdColors.Ink,
-                periodSelectorBorderColor = ColdColors.Line,
-                periodSelectorSelectedContainerColor = ColdColors.Accent.copy(alpha = 0.18f),
-                periodSelectorUnselectedContainerColor = ColdColors.Surface,
-                periodSelectorSelectedContentColor = ColdColors.Accent,
-                periodSelectorUnselectedContentColor = ColdColors.InkDim,
-            ),
-        )
-
-        Column(verticalArrangement = Arrangement.spacedBy(Space.md)) {
-            Text("REPEAT", style = ColdText.label, color = ColdColors.InkMute)
-            DayPicker(draft.repeatDays, onToggleDay)
+        Column(
+            Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = Space.screen, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            TimeWheels(draft.hour, draft.minute, is24Hour, onTime)
             Text(
-                if (draft.repeatDays == Weekdays.NONE) "No days picked: rings once." else " ",
+                "Rings at ${formatTime(draft.hour, draft.minute, is24Hour)} ${repeatPhrase(draft.repeatDays)}",
                 style = ColdText.caption,
-                color = ColdColors.InkMute,
-            )
-        }
-
-        OutlinedTextField(
-            value = draft.label,
-            onValueChange = onLabel,
-            singleLine = true,
-            placeholder = { Text("Label (optional)", color = ColdColors.InkMute) },
-            textStyle = ColdText.body,
-            shape = ColdShapes.small,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = ColdColors.Accent,
-                unfocusedBorderColor = ColdColors.Line,
-                cursorColor = ColdColors.Accent,
-                focusedTextColor = ColdColors.Ink,
-                unfocusedTextColor = ColdColors.Ink,
-            ),
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        if (QR_ROUND_ENABLED) ScanSection(draft.qrCode, onScan, onRemoveCode)
-
-        Column(verticalArrangement = Arrangement.spacedBy(Space.sm)) {
-            Button(
-                onClick = { onSave(time.hour, time.minute) },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ColdColors.Accent,
-                    contentColor = ColdColors.Ground,
-                ),
-                shape = ColdShapes.small,
+                color = sky.dim,
+                textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
-            ) {
-                Text("Save alarm", style = ColdText.prompt)
-            }
-            if (!draft.isNew) {
-                // Deliberately not red: red means "give up" in this app and nothing else.
-                TextButton(onClick = onDelete, modifier = Modifier.fillMaxWidth()) {
-                    Text("Delete alarm", style = ColdText.body, color = ColdColors.InkMute)
+                    .offset(y = (-4).dp),
+            )
+
+            Section {
+                SectionLabel("Repeat")
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    DayOfWeek.entries.forEachIndexed { i, day ->
+                        DayPill(DAY_LETTERS[i], DAY_NAMES[i], Weekdays.has(draft.repeatDays, day)) { onToggleDay(i) }
+                    }
                 }
             }
-        }
-    }
-}
 
-@Composable
-private fun DayPicker(repeatDays: Int, onToggle: (Int) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        DayOfWeek.entries.forEachIndexed { i, day ->
-            val on = Weekdays.has(repeatDays, day)
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .background(if (on) ColdColors.Accent else ColdColors.Ground, CircleShape)
-                    .border(1.dp, if (on) ColdColors.Accent else ColdColors.Line, CircleShape)
-                    .toggleable(value = on, role = Role.Checkbox, onValueChange = { onToggle(i) }),
-                contentAlignment = Alignment.Center,
-            ) {
+            Section {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+                    SectionLabel("Wake checks", Modifier.weight(1f))
+                    Text("instead of snooze", style = ColdText.caption.copy(fontSize = ColdText.label.fontSize), color = sky.mute)
+                }
+                Segmented(listOf("Off", "1", "2", "3"), draft.wakeChecks, onChecks)
+                Text(checksLine(draft.wakeChecks), style = ColdText.caption, color = sky.dim)
+            }
+
+            GlassCard(Modifier.fillMaxWidth()) {
+                Row(
+                    Modifier.padding(18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Finish with a scan", style = ColdText.bodyStrong, color = sky.ink)
+                        Text(
+                            when {
+                                !hasWakeCode -> "Register your wake-up code first, in Settings."
+                                draft.finishWithScan -> "Last round: walk to your wake-up code and scan it."
+                                else -> "Off. The morning ends after the puzzles."
+                            },
+                            style = ColdText.caption,
+                            color = sky.dim,
+                        )
+                        if (!hasWakeCode) {
+                            Text(
+                                "Open Settings",
+                                style = ColdText.bodyStrong.copy(fontSize = ColdText.caption.fontSize),
+                                color = sky.sunInk,
+                                modifier = Modifier
+                                    .springClick(0.92f, onClick = onOpenSettings)
+                                    .padding(top = 4.dp),
+                            )
+                        }
+                    }
+                    SpringToggle(draft.finishWithScan && hasWakeCode, { if (hasWakeCode) onScan(it) else onOpenSettings() }, "Finish with a scan")
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SectionLabel("Label", Modifier.padding(start = 4.dp))
+                BasicTextField(
+                    value = draft.label,
+                    onValueChange = onLabel,
+                    singleLine = true,
+                    textStyle = ColdText.body.copy(color = sky.ink),
+                    cursorBrush = SolidColor(sky.sunInk),
+                    decorationBox = { inner ->
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
+                                .clip(ColdShapes.button)
+                                .background(sky.card)
+                                .border(1.dp, sky.cardEdge, ColdShapes.button)
+                                .padding(horizontal = 16.dp),
+                            contentAlignment = Alignment.CenterStart,
+                        ) {
+                            if (draft.label.isEmpty()) Text("Weekdays, Gym…", style = ColdText.body, color = sky.mute)
+                            inner()
+                        }
+                    },
+                )
+            }
+
+            if (!draft.isNew) {
                 Text(
-                    DAY_LETTERS[i],
-                    style = ColdText.label,
-                    color = if (on) ColdColors.Ground else ColdColors.InkDim,
+                    "Delete alarm",
+                    style = ColdText.prompt,
+                    color = sky.mute,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .springClick(0.92f, onClick = onDelete)
+                        .padding(14.dp),
                 )
             }
         }
     }
 }
 
-/**
- * The QR round (chunk 11) is built but switched off: Byron parked it on 29 Sep. Flip this to
- * bring back the "Finish with a scan" section, and re-add the CAMERA permission to the manifest.
- * No alarm can have a code while it's off, so the ringing screen never reaches the QR round.
- */
-const val QR_ROUND_ENABLED = false
-
-/** Optional last round: walk to a code you registered and scan it. */
 @Composable
-private fun ScanSection(qrCode: String?, onScan: () -> Unit, onRemove: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(Space.sm)) {
-        Text("FINISH WITH A SCAN", style = ColdText.label, color = ColdColors.InkMute)
-        if (qrCode == null) {
-            Text(
-                "Optional. Register a barcode or QR code away from your bed. The last round is walking to it and scanning it.",
-                style = ColdText.caption,
-                color = ColdColors.InkMute,
-            )
-            OutlinedButton(
-                onClick = onScan,
-                shape = ColdShapes.small,
-                border = BorderStroke(1.dp, ColdColors.Line),
-            ) { Text("Register a code", style = ColdText.body, color = ColdColors.Ink) }
-        } else {
-            Text(
-                "Code registered. This alarm ends with scanning it.",
-                style = ColdText.caption,
-                color = ColdColors.Accent,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
-                OutlinedButton(
-                    onClick = onScan,
-                    shape = ColdShapes.small,
-                    border = BorderStroke(1.dp, ColdColors.Line),
-                ) { Text("Use a different code", style = ColdText.caption, color = ColdColors.Ink) }
-                TextButton(onClick = onRemove) {
-                    Text("Remove", style = ColdText.caption, color = ColdColors.InkMute)
-                }
-            }
+private fun Section(content: @Composable () -> Unit) {
+    GlassCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { content() }
+    }
+}
+
+/** Hour, minute and AM/PM wheels over one highlighted band. 24-hour phones get two wheels. */
+@Composable
+private fun TimeWheels(hour: Int, minute: Int, is24Hour: Boolean, onTime: (Int, Int) -> Unit) {
+    val sky = LocalSky.current
+    var h by remember { mutableIntStateOf(if (is24Hour) hour else (hour + 11) % 12) }
+    var m by remember { mutableIntStateOf(minute) }
+    var pm by remember { mutableIntStateOf(if (hour >= 12) 1 else 0) }
+    fun report() {
+        val h24 = if (is24Hour) h else ((h + 1) % 12) + 12 * pm
+        onTime(h24, m)
+    }
+
+    Box(Modifier.padding(horizontal = 24.dp)) {
+        Box(
+            Modifier
+                .padding(top = 88.dp)
+                .fillMaxWidth()
+                .height(44.dp)
+                .clip(ColdShapes.button)
+                .background(sky.card)
+                .border(1.dp, sky.cardEdge, ColdShapes.button),
+        )
+        Row(Modifier.fillMaxWidth()) {
+            val hours = if (is24Hour) (0..23).map { "%02d".format(it) } else (1..12).map { it.toString() }
+            WheelColumn(hours, h, { h = it; report() }, "Hour", Modifier.weight(1f))
+            WheelColumn((0..59).map { "%02d".format(it) }, m, { m = it; report() }, "Minute", Modifier.weight(1f))
+            if (!is24Hour) WheelColumn(listOf("AM", "PM"), pm, { pm = it; report() }, "AM or PM", Modifier.weight(1f))
         }
     }
+}
+
+private fun repeatPhrase(days: Int): String = when (days) {
+    Weekdays.NONE -> "once"
+    Weekdays.WEEKDAYS -> "on weekdays"
+    Weekdays.WEEKEND -> "on weekends"
+    0b1111111 -> "every day"
+    else -> "on " + DayOfWeek.entries.filter { Weekdays.has(days, it) }
+        .joinToString(", ") { DAY_NAMES[it.value - 1].take(3) }
+}
+
+private fun checksLine(n: Int): String = when (n) {
+    0 -> "Off. Once you solve the puzzles, the alarm is done for the morning."
+    1 -> "5 min after you solve, one “Still awake?” check. If your phone's in use it passes by itself. Miss it and the alarm rings again, from round 1."
+    else -> "Starting 5 min after you solve: $n “Still awake?” checks, 5 min apart. Any you miss rings the alarm again, from round 1."
 }

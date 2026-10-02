@@ -1,6 +1,7 @@
 package com.coldstart.app.data
 
 import com.coldstart.app.alarm.AlarmScheduler
+import com.coldstart.app.alarm.WakeCheck
 import com.coldstart.app.alarm.Weekdays
 import com.coldstart.app.puzzle.Difficulty
 import com.coldstart.app.puzzle.Levels
@@ -31,6 +32,11 @@ class AlarmRepository(
 
     val alarms: Flow<List<Alarm>> = alarmDao.observeAll()
     val recentWakes: Flow<List<WakeLog>> = wakeDao.observeRecent(60)
+    val settings: Flow<AppSettings?> = wakeDao.observeSettings()
+
+    suspend fun setWakeCode(code: String?) {
+        wakeDao.saveSettings((wakeDao.settings() ?: AppSettings()).copy(wakeCode = code?.trim()?.ifEmpty { null }))
+    }
 
     suspend fun get(id: Long): Alarm? = alarmDao.get(id)
 
@@ -63,19 +69,28 @@ class AlarmRepository(
     /**
      * An alarm just fired. Sets up its next ring, plans the morning, and opens a wake record.
      * Returns null if it shouldn't ring after all (deleted or switched off since it was scheduled).
+     *
+     * [isRering]: a missed wake check is ringing it again. The alarm may have switched itself off
+     * already (one-offs do, at fire time) and its next ring is already set, so neither is touched.
      */
-    suspend fun beginWake(alarmId: Long, now: LocalDateTime = LocalDateTime.now()): RingSession? = mutex.withLock {
+    suspend fun beginWake(
+        alarmId: Long,
+        now: LocalDateTime = LocalDateTime.now(),
+        isRering: Boolean = false,
+    ): RingSession? = mutex.withLock {
         val alarm = alarmDao.get(alarmId)
-        if (alarm == null || !alarm.enabled) {
-            scheduler.cancel(alarmId)
+        if (alarm == null || (!alarm.enabled && !isRering)) {
+            if (!isRering) scheduler.cancel(alarmId)
             return@withLock null
         }
-        scheduleNextAfterFiring(alarm, now)
+        if (!isRering) scheduleNextAfterFiring(alarm, now)
 
+        val wakeCode = wakeDao.settings()?.wakeCode
+        val scan = alarm.finishWithScan && wakeCode != null
         val puzzles = alarm.roundTypes.filter { it != RoundType.QR_SCAN }.ifEmpty { RoundType.MORNING_DEFAULT }
         val lastOpener = wakeDao.lastOpener()?.let { runCatching { RoundType.valueOf(it) }.getOrNull() }
         val rounds = planMorning(puzzles, lastOpener, Random.Default) +
-            if (alarm.qrCode != null) listOf(RoundType.QR_SCAN) else emptyList()
+            if (scan) listOf(RoundType.QR_SCAN) else emptyList()
         val levels = puzzles.associateWith { levelFor(it) }
 
         val wakeId = wakeDao.insertWake(
@@ -89,7 +104,8 @@ class AlarmRepository(
             label = alarm.label,
             rounds = rounds,
             levels = levels,
-            qrCode = alarm.qrCode,
+            qrCode = if (scan) wakeCode else null,
+            wakeChecks = alarm.wakeChecks.coerceIn(0, WakeCheck.MAX),
         )
     }
 
@@ -111,13 +127,30 @@ class AlarmRepository(
         }
     }
 
-    suspend fun finishWake(wakeId: Long, outcome: WakeOutcome, results: List<RoundResultDraft>) {
+    /** Only a solve earns wake checks: a give-up or a time-out has already ended the morning. */
+    suspend fun finishWake(session: RingSession, outcome: WakeOutcome, results: List<RoundResultDraft>) {
+        val wakeId = session.wakeId
         wakeDao.finish(wakeId, System.currentTimeMillis(), outcome.name)
         if (results.isNotEmpty()) {
             wakeDao.insertResults(
                 results.map { RoundResult(wakeId = wakeId, type = it.type, level = it.level, solveMs = it.solveMs, misses = it.misses) },
             )
         }
+        if (outcome == WakeOutcome.SOLVED) {
+            WakeCheck.first(session.alarmId, wakeId, session.wakeChecks)?.let { scheduler.scheduleWakeCheck(it) }
+        }
+    }
+
+    /** Answered in time, or passed silently because the phone was in use. Sets up the next one. */
+    suspend fun checkPassed(check: WakeCheck) {
+        scheduler.cancelCheckDeadline(check)
+        wakeDao.checkPassed(check.wakeId)
+        check.next()?.let { scheduler.scheduleWakeCheck(it) }
+    }
+
+    /** Missed: the caller rings the alarm again, and that morning gets its own checks if solved. */
+    suspend fun checkMissed(check: WakeCheck) {
+        wakeDao.checkMissed(check.wakeId)
     }
 
     /** This morning's level for a puzzle type, moved by the last five rounds at the current level. */

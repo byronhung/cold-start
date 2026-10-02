@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.coldstart.app.alarm.WakeCheck
 import com.coldstart.app.data.Alarm
 import com.coldstart.app.data.WakeOutcome
 import kotlinx.coroutines.launch
@@ -14,6 +15,9 @@ import java.time.LocalDateTime
  *
  *   adb shell am broadcast -n com.coldstart.app/.DebugReceiver -a com.coldstart.app.debug.ADD --ei minutes 1
  *   adb shell am broadcast -n com.coldstart.app/.DebugReceiver -a com.coldstart.app.debug.STOP
+ *
+ * ADD also takes --ei checks N (wake checks, default 0), --ei checkDelaySec S (seconds between
+ * checks, instead of 5 minutes; lasts until the app process dies) and --ez scan true.
  *
  * ADD saves a one-off alarm through the repository, so it's scheduled exactly like a real one.
  */
@@ -26,7 +30,18 @@ class DebugReceiver : BroadcastReceiver() {
                 when (intent.action) {
                     ACTION_ADD -> {
                         val at = LocalDateTime.now().plusMinutes(intent.getIntExtra("minutes", 1).toLong())
-                        val id = app.repository.save(Alarm(hour = at.hour, minute = at.minute, label = "Test"))
+                        if (intent.hasExtra("checkDelaySec")) {
+                            WakeCheck.delayOverrideMs = intent.getIntExtra("checkDelaySec", 300) * 1000L
+                        }
+                        val id = app.repository.save(
+                            Alarm(
+                                hour = at.hour,
+                                minute = at.minute,
+                                label = "Test",
+                                wakeChecks = intent.getIntExtra("checks", 0),
+                                finishWithScan = intent.getBooleanExtra("scan", false),
+                            ),
+                        )
                         Log.i(TAG, "Added test alarm $id at ${at.hour}:${at.minute}")
                     }
                     ACTION_STOP -> {

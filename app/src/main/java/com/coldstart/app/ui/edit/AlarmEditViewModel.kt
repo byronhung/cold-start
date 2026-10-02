@@ -5,19 +5,24 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.coldstart.app.alarm.WakeCheck
 import com.coldstart.app.alarm.Weekdays
 import com.coldstart.app.data.Alarm
 import com.coldstart.app.data.AlarmRepository
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** What the form holds. The time itself lives in the time picker's own state until Save. */
+/** Everything the form holds, the time included: the wheel picker reports as it turns. */
 data class EditDraft(
     val hour: Int,
     val minute: Int,
     val repeatDays: Int,
     val label: String,
-    /** The code the last round asks you to scan, or null for no scan round. */
-    val qrCode: String?,
+    val wakeChecks: Int,
+    val finishWithScan: Boolean,
     val isNew: Boolean,
 )
 
@@ -31,6 +36,10 @@ class AlarmEditViewModel(
     var draft by mutableStateOf<EditDraft?>(null)
         private set
 
+    /** The shared wake-up code, so the scan toggle can say whether one is registered. */
+    val wakeCode: StateFlow<String?> = repository.settings.map { it?.wakeCode }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     private var original: Alarm? = null
     private var busy = false
 
@@ -41,13 +50,22 @@ class AlarmEditViewModel(
             viewModelScope.launch {
                 val alarm = repository.get(alarmId)
                 original = alarm
-                draft = alarm?.let { EditDraft(it.hour, it.minute, it.repeatDays, it.label, it.qrCode, isNew = false) }
-                    ?: newDraft()
+                draft = alarm?.let {
+                    EditDraft(it.hour, it.minute, it.repeatDays, it.label, it.wakeChecks, it.finishWithScan, isNew = false)
+                } ?: newDraft()
             }
         }
     }
 
-    private fun newDraft() = EditDraft(hour = 7, minute = 0, repeatDays = Weekdays.WEEKDAYS, label = "", qrCode = null, isNew = true)
+    // New alarms get one wake check: enough to catch going back to sleep, rarely noticed when awake.
+    private fun newDraft() = EditDraft(
+        hour = 7, minute = 0, repeatDays = Weekdays.WEEKDAYS, label = "",
+        wakeChecks = 1, finishWithScan = false, isNew = true,
+    )
+
+    fun setTime(hour: Int, minute: Int) {
+        draft = draft?.copy(hour = hour, minute = minute)
+    }
 
     /** [dayIndex] 0 = Monday … 6 = Sunday. */
     fun toggleDay(dayIndex: Int) {
@@ -58,24 +76,29 @@ class AlarmEditViewModel(
         draft = draft?.copy(label = value.take(MAX_LABEL))
     }
 
-    fun setQrCode(code: String?) {
-        draft = draft?.copy(qrCode = code?.trim()?.ifEmpty { null })
+    fun setWakeChecks(count: Int) {
+        draft = draft?.copy(wakeChecks = count.coerceIn(0, WakeCheck.MAX))
+    }
+
+    fun setFinishWithScan(on: Boolean) {
+        draft = draft?.copy(finishWithScan = on)
     }
 
     /** Saving always turns the alarm on: you just set it, so you want it. */
-    fun save(hour: Int, minute: Int, onDone: () -> Unit) {
+    fun save(onDone: () -> Unit) {
         val d = draft ?: return
         if (busy) return
         busy = true
         viewModelScope.launch {
-            val base = original ?: Alarm(hour = hour, minute = minute)
+            val base = original ?: Alarm(hour = d.hour, minute = d.minute)
             repository.save(
                 base.copy(
-                    hour = hour,
-                    minute = minute,
+                    hour = d.hour,
+                    minute = d.minute,
                     repeatDays = d.repeatDays,
                     label = d.label.trim(),
-                    qrCode = d.qrCode,
+                    wakeChecks = d.wakeChecks,
+                    finishWithScan = d.finishWithScan,
                     enabled = true,
                 ),
             )

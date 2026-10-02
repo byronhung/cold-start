@@ -19,7 +19,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.coldstart.app.ui.theme.ColdColors
+import com.coldstart.app.ui.theme.Sun
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.composed
+import androidx.compose.ui.graphics.graphicsLayer
 import com.coldstart.app.ui.theme.ColdText
 import kotlinx.coroutines.delay
 
@@ -71,7 +75,7 @@ fun MissNote(missCount: Int, text: String = "Not that one.") {
         Text(
             if (visible) text else "",
             style = ColdText.caption,
-            color = ColdColors.InkDim,
+            color = Sun.OnGlass.copy(alpha = 0.75f),
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -79,8 +83,24 @@ fun MissNote(missCount: Int, text: String = "Not that one.") {
 }
 
 fun inkColour(ink: InkColour): Color = when (ink) {
-    InkColour.RED -> ColdColors.PuzzleRed
-    InkColour.BLUE -> ColdColors.PuzzleBlue
-    InkColour.GREEN -> ColdColors.PuzzleGreen
-    InkColour.YELLOW -> ColdColors.PuzzleYellow
+    InkColour.RED -> Sun.PuzzleRed
+    InkColour.BLUE -> Sun.PuzzleBlue
+    InkColour.GREEN -> Sun.PuzzleGreen
+    InkColour.YELLOW -> Sun.PuzzleYellow
+}
+
+/** The prompt above every puzzle. */
+@Composable
+fun PuzzlePrompt(text: String) {
+    Text(text, style = ColdText.prompt, color = Sun.OnGlass.copy(alpha = 0.8f), textAlign = TextAlign.Center)
+}
+
+/** Shakes sideways whenever [trigger] changes (a wrong tap), the prototype's 0.38 s shake. */
+fun Modifier.shakeOn(trigger: Int): Modifier = composed {
+    val x = remember { Animatable(0f) }
+    LaunchedEffect(trigger) {
+        if (trigger == 0) return@LaunchedEffect
+        for (target in listOf(-7f, 7f, -7f, 7f, 0f)) x.animateTo(target, tween(38))
+    }
+    graphicsLayer { translationX = x.value * density }
 }

@@ -69,6 +69,24 @@ fun nextAlarmSummary(alarms: List<Alarm>, now: LocalDateTime, is24Hour: Boolean 
 }
 
 fun describeNext(next: LocalDateTime, now: LocalDateTime, is24Hour: Boolean = true): String {
+    val (day, until) = dayAndCountdown(next, now)
+    return "Next: $day at ${formatTime(next.hour, next.minute, is24Hour)} · in $until"
+}
+
+/** The list's hero: the next alarm as big digits, AM/PM, and "tomorrow · in 8 h 30 m". */
+data class NextAlarm(val digits: String, val period: String?, val line: String)
+
+fun nextAlarm(alarms: List<Alarm>, now: LocalDateTime, is24Hour: Boolean): NextAlarm? {
+    val next = alarms.filter { it.enabled }.minOfOrNull { it.nextTrigger(now) } ?: return null
+    val (day, until) = dayAndCountdown(next, now)
+    return NextAlarm(
+        digits = clockDigits(next.hour, next.minute, is24Hour),
+        period = if (is24Hour) null else period(next.hour),
+        line = "$day · in $until",
+    )
+}
+
+private fun dayAndCountdown(next: LocalDateTime, now: LocalDateTime): Pair<String, String> {
     val day = when (ChronoUnit.DAYS.between(now.toLocalDate(), next.toLocalDate())) {
         0L -> "today"
         1L -> "tomorrow"
@@ -81,5 +99,5 @@ fun describeNext(next: LocalDateTime, now: LocalDateTime, is24Hour: Boolean = tr
         minutes >= 60 -> "${minutes / 60} h ${minutes % 60} m"
         else -> "$minutes m"
     }
-    return "Next: $day at ${formatTime(next.hour, next.minute, is24Hour)} · in $until"
+    return day to until
 }

@@ -35,6 +35,39 @@ class AlarmScheduler(private val context: Context) {
         alarmManager.cancel(fireIntent(alarmId))
     }
 
+    /** A wake check [WakeCheck.delayMs] from now. */
+    fun scheduleWakeCheck(check: WakeCheck, now: Long = System.currentTimeMillis()) =
+        setClock(now + WakeCheck.delayMs, checkIntent(check, WakeCheckReceiver.ACTION_CHECK))
+
+    /** The end of a check's answer window: if this fires, the check was missed. */
+    fun scheduleCheckDeadline(check: WakeCheck, at: Long) =
+        setClock(at, checkIntent(check, WakeCheckReceiver.ACTION_DEADLINE))
+
+    fun cancelCheckDeadline(check: WakeCheck) {
+        alarmManager.cancel(checkIntent(check, WakeCheckReceiver.ACTION_DEADLINE))
+    }
+
+    // setAlarmClock for checks too: it is the alarm type Doze can't delay, and it lets the
+    // receiver re-ring the alarm from the background.
+    private fun setClock(at: Long, operation: PendingIntent) {
+        try {
+            alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(at, showIntent()), operation)
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Can't schedule wake check", e)
+        }
+    }
+
+    private fun checkIntent(check: WakeCheck, action: String): PendingIntent {
+        val kind = if (action == WakeCheckReceiver.ACTION_CHECK) 0 else 1
+        return PendingIntent.getBroadcast(
+            context,
+            CHECK_REQUEST_BASE + ((check.wakeId * 8 + check.index * 2 + kind) % 1_000_000).toInt(),
+            WakeCheckReceiver.intent(context, check, action)
+                .setData(Uri.parse("coldstart://check/${check.wakeId}/${check.index}/$kind")),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+    }
+
     fun canScheduleExact(): Boolean =
         android.os.Build.VERSION.SDK_INT < 31 || alarmManager.canScheduleExactAlarms()
 
@@ -59,5 +92,6 @@ class AlarmScheduler(private val context: Context) {
 
     private companion object {
         const val TAG = "AlarmScheduler"
+        const val CHECK_REQUEST_BASE = 1_000_000
     }
 }

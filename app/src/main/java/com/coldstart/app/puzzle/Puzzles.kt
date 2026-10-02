@@ -11,22 +11,42 @@ import kotlin.random.Random
 object Levels {
     const val MIN = 1
     const val MAX = 3
-    const val DEFAULT = 2
+
+    /** v0.2: mornings start at the top level (22 s half-asleep was too easy). Slow weeks step down. */
+    const val DEFAULT = 3
 }
 
 // ---------- the morning ----------
 
+/** Five rounds: long enough that solving it is actually waking up (~60–90 s). */
+const val MORNING_ROUNDS = 5
+
 /**
- * One round of each type, shuffled. Yesterday's first type can't be first today:
- * a one-day memory is enough to kill the sense of repetition.
+ * [rounds] rounds drawn from [types]: every type at least once, never the same type twice in a
+ * row, and yesterday's first type can't be first today.
  */
-fun planMorning(types: List<RoundType>, lastOpener: RoundType?, rng: Random): List<RoundType> {
-    val order = types.distinct().shuffled(rng).toMutableList()
-    if (order.size > 1 && order[0] == lastOpener) {
-        val swap = 1 + rng.nextInt(order.size - 1)
-        order[0] = order[swap].also { order[swap] = order[0] }
+fun planMorning(
+    types: List<RoundType>,
+    lastOpener: RoundType?,
+    rng: Random,
+    rounds: Int = MORNING_ROUNDS,
+): List<RoundType> {
+    val pool = types.distinct()
+    if (pool.isEmpty() || rounds <= 0) return emptyList()
+    if (pool.size == 1) return List(rounds) { pool[0] }
+
+    val needAll = rounds >= pool.size
+    repeat(500) {
+        val plan = ArrayList<RoundType>(rounds)
+        for (i in 0 until rounds) {
+            val banned = if (i == 0) lastOpener else plan[i - 1]
+            plan += pool.filter { it != banned }.random(rng)
+        }
+        if (!needAll || plan.toSet().size == pool.size) return plan
     }
-    return order
+    // Practically unreachable: a fixed cycle that still meets every rule.
+    val start = pool.indexOfFirst { it != lastOpener }.coerceAtLeast(0)
+    return List(rounds) { pool[(start + it) % pool.size] }
 }
 
 // ---------- Stroop ----------

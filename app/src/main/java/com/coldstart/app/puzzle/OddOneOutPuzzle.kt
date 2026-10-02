@@ -1,7 +1,6 @@
 package com.coldstart.app.puzzle
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,9 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import com.coldstart.app.ui.theme.ColdColors
+import androidx.compose.ui.unit.dp
+import com.coldstart.app.ui.components.springClick
 import com.coldstart.app.ui.theme.ColdText
-import com.coldstart.app.ui.theme.Space
+import com.coldstart.app.ui.theme.Sun
 import kotlin.random.Random
 
 /**
@@ -52,15 +52,15 @@ fun OddOneOutPuzzle(level: Int, onMiss: () -> Unit, onSolved: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Space.md),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Text("Find the one that doesn't match", style = ColdText.prompt, color = ColdColors.InkDim)
-        SquareGrid(size = spec.gridSize, gap = 4) { i ->
+        PuzzlePrompt("Find the one that doesn't match")
+        SquareGrid(size = spec.gridSize, gap = 4, modifier = Modifier.shakeOn(misses)) { i ->
             val shape = spec.items[i]
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clickable { tap(i) }
+                    .springClick(0.82f) { tap(i) }
                     .semantics {
                         contentDescription = "${shape.size.name} ${shape.colour.name} ${shape.form.name}".lowercase()
                     },
@@ -68,20 +68,21 @@ fun OddOneOutPuzzle(level: Int, onMiss: () -> Unit, onSolved: () -> Unit) {
             ) {
                 Box(
                     Modifier
-                        .fillMaxSize(if (shape.size == ShapeSize.BIG) 0.8f else 0.48f)
+                        .fillMaxSize(if (shape.size == ShapeSize.BIG) 0.82f else 0.46f)
                         .background(
                             shapeColour(shape.colour),
-                            if (shape.form == ShapeForm.CIRCLE) CircleShape else RoundedCornerShape(percent = 14),
+                            if (shape.form == ShapeForm.CIRCLE) CircleShape else RoundedCornerShape(percent = 18),
                         ),
                 )
             }
         }
+        Text("Colour, shape and size: only one is unique", style = ColdText.caption, color = Sun.OnGlass.copy(alpha = 0.6f))
         MissNote(misses, text = "Not that one. New grid.")
     }
 }
 
 /** Red and blue: they stay distinct under red-green colour blindness. */
 private fun shapeColour(colour: ShapeColour): Color = when (colour) {
-    ShapeColour.RED -> ColdColors.PuzzleRed
-    ShapeColour.BLUE -> ColdColors.PuzzleBlue
+    ShapeColour.RED -> Sun.PuzzleRed
+    ShapeColour.BLUE -> Sun.PuzzleBlue
 }

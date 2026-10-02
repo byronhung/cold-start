@@ -3,25 +3,18 @@ package com.coldstart.app.ui.theme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 
-private val ColdScheme = darkColorScheme(
-    primary = ColdColors.Accent,
-    onPrimary = ColdColors.Ground,
-    background = ColdColors.Ground,
-    onBackground = ColdColors.Ink,
-    surface = ColdColors.Surface,
-    onSurface = ColdColors.Ink,
-    onSurfaceVariant = ColdColors.InkDim,
-    outline = ColdColors.Line,
-    error = ColdColors.Danger,
+// Material only supplies the odd system widget (text selection, cursor). Sunrise draws the rest.
+private val SunriseScheme = darkColorScheme(
+    primary = Sun.Amber,
+    onPrimary = Sun.OnAmber,
+    background = Color(0xFF0B1030),
+    surface = Color(0xFF1A1B46),
+    onSurface = Color(0xFFFFF6EC),
 )
 
-/** Always dark: there is no light theme, whatever the phone's setting. */
 @Composable
 fun ColdStartTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = ColdScheme,
-        typography = ColdTypography,
-        content = content,
-    )
+    MaterialTheme(colorScheme = SunriseScheme, typography = ColdTypography, content = content)
 }

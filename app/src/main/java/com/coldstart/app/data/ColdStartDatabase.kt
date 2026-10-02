@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Alarm::class, WakeLog::class, RoundResult::class], version = 2, exportSchema = false)
+@Database(entities = [Alarm::class, WakeLog::class, RoundResult::class, AppSettings::class], version = 3, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class ColdStartDatabase : RoomDatabase() {
     abstract fun alarmDao(): AlarmDao
@@ -28,8 +28,22 @@ abstract class ColdStartDatabase : RoomDatabase() {
             // fails harmlessly if the phone is still locked.
             runCatching { deviceContext.moveDatabaseFrom(context, NAME) }
             return Room.databaseBuilder(deviceContext, ColdStartDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
+        }
+
+        /** v3 (v0.2): wake checks, scan-to-finish, and the shared wake-up code. */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `alarms` ADD COLUMN `wakeChecks` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `alarms` ADD COLUMN `finishWithScan` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `wake_log` ADD COLUMN `checksPassed` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `wake_log` ADD COLUMN `checksMissed` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `settings` (`id` INTEGER NOT NULL, `wakeCode` TEXT, PRIMARY KEY(`id`))")
+                // Difficulty restarts at the new top level: v0.1's results were on a 3-round,
+                // level-2 scale and would hold every type down at 2.
+                db.execSQL("DELETE FROM `round_results`")
+            }
         }
 
         /** v2 adds the wake history and per-round results. The alarms table is unchanged. */

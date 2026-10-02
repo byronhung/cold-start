@@ -21,9 +21,11 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
-    <!-- QR round is parked (QR_ROUND_ENABLED = false). To turn it back on, restore:
-         <uses-permission android:name="android.permission.CAMERA" />
-         <uses-feature android:name="android.hardware.camera" android:required="false" /> -->
+    <!-- Scan round: read the wake-up code (any barcode) away from the bed. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
 
     <application
         android:name=".ColdStartApp"
@@ -55,6 +57,22 @@
             android:showWhenLocked="true"
             android:taskAffinity="com.coldstart.app.ring"
             android:turnScreenOn="true" />
+
+        <activity
+            android:name=".ring.WakeCheckActivity"
+            android:directBootAware="true"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait"
+            android:showWhenLocked="true"
+            android:taskAffinity="com.coldstart.app.check"
+            android:turnScreenOn="true" />
+
+        <receiver
+            android:name=".alarm.WakeCheckReceiver"
+            android:directBootAware="true"
+            android:exported="false" />
 
         <service
             android:name=".ring.RingService"

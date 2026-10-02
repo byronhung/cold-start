@@ -96,4 +96,16 @@ class NextTriggerTest {
             nextAlarmSummary(listOf(alarm), friday2241, is24Hour = false),
         )
     }
+
+    @Test fun `the hero splits the next alarm into digits, period and a countdown line`() {
+        val next = nextAlarm(listOf(Alarm(hour = 6, minute = 30)), friday2241, is24Hour = false)!!
+        assertEquals("6:30", next.digits)
+        assertEquals("AM", next.period)
+        assertEquals("tomorrow · in 7 h 49 m", next.line)
+    }
+
+    @Test fun `the hero has no period on a 24-hour phone, and nothing when all are off`() {
+        assertNull(nextAlarm(listOf(Alarm(hour = 6, minute = 30)), friday2241, is24Hour = true)!!.period)
+        assertNull(nextAlarm(listOf(Alarm(hour = 6, minute = 30, enabled = false)), friday2241, is24Hour = false))
+    }
 }

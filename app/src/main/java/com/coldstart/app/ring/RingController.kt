@@ -19,6 +19,8 @@ data class RingSession(
     val rounds: List<RoundType>,
     val levels: Map<RoundType, Int>,
     val qrCode: String?,
+    /** "Still awake?" checks after solving, 0–3. */
+    val wakeChecks: Int = 0,
 )
 
 /** A solved round, before it's written to the database. */
@@ -66,7 +68,7 @@ class RingController(
         val ringing = _state.value as? RingState.Ringing
         _state.value = RingState.Idle
         if (ringing != null) {
-            scope.launch { repository.finishWake(ringing.session.wakeId, outcome, results) }
+            scope.launch { repository.finishWake(ringing.session, outcome, results) }
         }
     }
 }

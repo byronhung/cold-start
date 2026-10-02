@@ -17,11 +17,18 @@ class PuzzlesTest {
 
     // ---------- the morning ----------
 
-    @Test fun `a morning is one of each type`() {
-        repeat(200) { seed ->
+    @Test fun `a morning is five rounds with every type in it`() {
+        repeat(300) { seed ->
             val plan = planMorning(pool, lastOpener = null, rng = Random(seed))
+            assertEquals(MORNING_ROUNDS, plan.size)
             assertEquals(pool.toSet(), plan.toSet())
-            assertEquals(3, plan.size)
+        }
+    }
+
+    @Test fun `no type twice in a row`() {
+        repeat(300) { seed ->
+            val plan = planMorning(pool, lastOpener = null, rng = Random(seed))
+            plan.zipWithNext().forEach { (a, b) -> assertNotEquals(a, b) }
         }
     }
 
@@ -34,8 +41,16 @@ class PuzzlesTest {
     }
 
     @Test fun `the order actually varies`() {
-        val orders = (0 until 200).map { planMorning(pool, null, Random(it)) }.toSet()
-        assertEquals(6, orders.size) // all 3! orders turn up
+        val plans = (0 until 300).map { planMorning(pool, null, Random(it)) }.toSet()
+        assertTrue(plans.size > 20)
+    }
+
+    @Test fun `a single-type pool still fills the morning`() {
+        assertEquals(List(5) { STROOP }, planMorning(listOf(STROOP), STROOP, Random(1)))
+    }
+
+    @Test fun `mornings start at the top level`() {
+        assertEquals(Levels.MAX, Levels.DEFAULT)
     }
 
     // ---------- Stroop ----------

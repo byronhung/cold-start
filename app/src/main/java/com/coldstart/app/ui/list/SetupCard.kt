@@ -11,14 +11,11 @@ import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -28,10 +25,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
-import com.coldstart.app.ui.theme.ColdColors
-import com.coldstart.app.ui.theme.ColdShapes
+import com.coldstart.app.ui.components.AmberButton
+import com.coldstart.app.ui.components.GlassCard
+import com.coldstart.app.ui.components.SectionLabel
+import com.coldstart.app.ui.theme.LocalSky
 import com.coldstart.app.ui.theme.ColdText
 import com.coldstart.app.ui.theme.Space
 
@@ -77,41 +77,37 @@ fun SetupCard() {
     if (checks.allGood) return
 
     val pkg = Uri.parse("package:${context.packageName}")
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = Space.xl)
-            .background(ColdColors.Surface, ColdShapes.medium)
-            .padding(Space.lg),
-        verticalArrangement = Arrangement.spacedBy(Space.lg),
-    ) {
-        Text("BEFORE ALARMS CAN RING", style = ColdText.label, color = ColdColors.Accent)
-        if (!checks.notifications) {
-            SetupRow("Allow notifications", "The ringing screen opens through one.") {
-                if (Build.VERSION.SDK_INT >= 33) {
-                    askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
-                } else {
-                    context.startActivity(
-                        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
-                    )
+    val sky = LocalSky.current
+    GlassCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(Space.lg + 2.dp), verticalArrangement = Arrangement.spacedBy(Space.lg)) {
+            SectionLabel("Before alarms can ring", color = sky.sunInk)
+            if (!checks.notifications) {
+                SetupRow("Allow notifications", "The ringing screen opens through one.") {
+                    if (Build.VERSION.SDK_INT >= 33) {
+                        askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        context.startActivity(
+                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+                        )
+                    }
                 }
             }
-        }
-        if (!checks.fullScreen) {
-            SetupRow("Allow full-screen alarms", "Lets the alarm take over the lock screen.") {
-                context.startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, pkg))
+            if (!checks.fullScreen) {
+                SetupRow("Allow full-screen alarms", "Lets the alarm take over the lock screen.") {
+                    context.startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, pkg))
+                }
             }
-        }
-        if (!checks.exactAlarms) {
-            SetupRow("Allow alarms", "So it rings on the minute, not roughly.") {
-                context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, pkg))
+            if (!checks.exactAlarms) {
+                SetupRow("Allow alarms", "So it rings on the minute, not roughly.") {
+                    context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, pkg))
+                }
             }
-        }
-        if (!checks.battery) {
-            SetupRow("Remove battery limits", "Stops the phone putting Cold Start to sleep overnight.") {
-                @Suppress("BatteryLife")
-                context.startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, pkg))
+            if (!checks.battery) {
+                SetupRow("Remove battery limits", "Stops the phone putting Cold Start to sleep overnight.") {
+                    @Suppress("BatteryLife")
+                    context.startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, pkg))
+                }
             }
         }
     }
@@ -119,16 +115,12 @@ fun SetupCard() {
 
 @Composable
 private fun SetupRow(title: String, why: String, onAllow: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    val sky = LocalSky.current
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Space.md)) {
         Column(Modifier.weight(1f)) {
-            Text(title, style = ColdText.body, color = ColdColors.Ink)
-            Text(why, style = ColdText.caption, color = ColdColors.InkMute)
+            Text(title, style = ColdText.bodyStrong, color = sky.ink)
+            Text(why, style = ColdText.caption, color = sky.dim)
         }
-        Button(
-            onClick = onAllow,
-            colors = ButtonDefaults.buttonColors(containerColor = ColdColors.Accent, contentColor = ColdColors.Ground),
-            shape = ColdShapes.small,
-            modifier = Modifier.padding(start = Space.md),
-        ) { Text("Allow", style = ColdText.caption) }
+        AmberButton("Allow", onAllow, height = 44.dp)
     }
 }

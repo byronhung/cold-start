@@ -1,5 +1,6 @@
 package com.coldstart.app.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverter
@@ -16,8 +17,15 @@ data class Alarm(
     val enabled: Boolean = true,
     /** The puzzle types this alarm draws its morning from. */
     val roundTypes: List<RoundType> = RoundType.MORNING_DEFAULT,
-    /** The code to scan, once the QR round exists (chunk 11). Null until then. */
+    /** Unused since v0.2: the code is shared now, see [AppSettings.wakeCode]. Kept to avoid a migration. */
     val qrCode: String? = null,
+    /**
+     * "Still awake?" checks after solving, 0–3. Like snooze, but the other way round. New alarms
+     * get 1; alarms from before v0.2 get 0 (the column default) so nothing changes under them.
+     */
+    @ColumnInfo(defaultValue = "0") val wakeChecks: Int = 1,
+    /** Last round is scanning the shared wake-up code. */
+    @ColumnInfo(defaultValue = "0") val finishWithScan: Boolean = false,
 )
 
 enum class RoundType {

@@ -2,7 +2,6 @@ package com.coldstart.app.puzzle
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,13 +19,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.coldstart.app.ui.theme.ColdColors
+import com.coldstart.app.ui.components.springClick
 import com.coldstart.app.ui.theme.ColdShapes
 import com.coldstart.app.ui.theme.ColdText
-import com.coldstart.app.ui.theme.Space
+import com.coldstart.app.ui.theme.Sun
 import kotlin.random.Random
 
 /**
@@ -63,29 +65,32 @@ fun StroopPuzzle(level: Int, onMiss: () -> Unit, onSolved: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Space.md),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Text("Tap the ink colour", style = ColdText.prompt, color = ColdColors.InkDim)
-        Text(word.word.name, style = ColdText.stroopWord, color = inkColour(word.ink))
-        Text("${cleared + 1} OF $total", style = ColdText.label, color = ColdColors.InkMute)
-        Column(verticalArrangement = Arrangement.spacedBy(Space.sm), modifier = Modifier.fillMaxWidth()) {
+        PuzzlePrompt("Tap the ink colour")
+        Text(word.word.name, style = ColdText.stroopWord, color = inkColour(word.ink), modifier = Modifier.shakeOn(misses))
+        Text("${cleared + 1} OF $total", style = ColdText.label, color = Sun.OnGlass.copy(alpha = 0.6f))
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             swatches.chunked(2).forEach { pair ->
-                Row(horizontalArrangement = Arrangement.spacedBy(Space.sm), modifier = Modifier.fillMaxWidth()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                     pair.forEach { colour ->
+                        val c = inkColour(colour)
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .height(68.dp)
-                                .background(ColdColors.Surface, ColdShapes.small)
-                                .border(1.dp, ColdColors.Line, ColdShapes.small)
-                                .clickable { tap(colour) }
+                                .springClick(0.88f) { tap(colour) }
+                                .height(64.dp)
+                                .clip(ColdShapes.button)
+                                .background(Color.White.copy(alpha = 0.07f))
+                                .border(1.dp, Color.White.copy(alpha = 0.14f), ColdShapes.button)
                                 .semantics { contentDescription = colour.name.lowercase() },
                             contentAlignment = Alignment.Center,
                         ) {
                             Box(
                                 Modifier
                                     .size(30.dp)
-                                    .background(inkColour(colour), CircleShape),
+                                    .shadow(14.dp, CircleShape, ambientColor = c, spotColor = c)
+                                    .background(c, CircleShape),
                             )
                         }
                     }

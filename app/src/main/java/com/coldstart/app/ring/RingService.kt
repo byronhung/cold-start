@@ -37,12 +37,13 @@ class RingService : Service() {
 
         val controller = app.ringController
         val alarmId = intent?.getLongExtra(EXTRA_ALARM_ID, -1L) ?: -1L
+        val isRering = intent?.getBooleanExtra(EXTRA_RERING, false) ?: false
         if (alarmId < 0) {
             if (!controller.isActive) shutDown()
             return START_NOT_STICKY
         }
         if (controller.isActive) {
-            scope.launch { app.repository.skipWake(alarmId) }
+            if (!isRering) scope.launch { app.repository.skipWake(alarmId) }
             return START_REDELIVER_INTENT
         }
 
@@ -54,7 +55,7 @@ class RingService : Service() {
             shutDown()
         }
         scope.launch {
-            val session = app.repository.beginWake(alarmId)
+            val session = app.repository.beginWake(alarmId, isRering = isRering)
             if (session == null) {
                 controller.abort()
                 return@launch
@@ -110,11 +111,14 @@ class RingService : Service() {
     companion object {
         private const val TAG = "RingService"
         private const val EXTRA_ALARM_ID = "alarmId"
+        private const val EXTRA_RERING = "rering"
 
         /** An alarm nobody answers stops after an hour, logged as timed out. */
         const val RING_TIMEOUT_MS = 60 * 60 * 1000L
 
-        fun startIntent(context: Context, alarmId: Long): Intent =
-            Intent(context, RingService::class.java).putExtra(EXTRA_ALARM_ID, alarmId)
+        fun startIntent(context: Context, alarmId: Long, isRering: Boolean = false): Intent =
+            Intent(context, RingService::class.java)
+                .putExtra(EXTRA_ALARM_ID, alarmId)
+                .putExtra(EXTRA_RERING, isRering)
     }
 }

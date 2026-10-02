@@ -4,23 +4,15 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,14 +23,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.coldstart.app.puzzle.BarcodeScanner
-import com.coldstart.app.ui.theme.ColdColors
+import com.coldstart.app.ui.components.AmberButton
+import com.coldstart.app.ui.components.IconSquareButton
+import com.coldstart.app.ui.components.QuietButton
+import com.coldstart.app.ui.components.SkyBackground
+import com.coldstart.app.ui.components.SunIcons
 import com.coldstart.app.ui.theme.ColdShapes
 import com.coldstart.app.ui.theme.ColdText
+import com.coldstart.app.ui.theme.LocalSky
+import com.coldstart.app.ui.theme.Skies
 import com.coldstart.app.ui.theme.Space
+import com.google.android.gms.common.moduleinstall.ModuleInstall
+import com.google.android.gms.common.moduleinstall.ModuleInstallRequest
+import com.google.mlkit.vision.barcode.BarcodeScanning
 
-/** Registering the code an alarm will ask you to scan. Asks for the camera here, at setup, not at 6am. */
+/** Registering the wake-up code. Asks for the camera here, at setup, not at 6am. */
 @Composable
 fun ScanScreen(onCode: (String) -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
@@ -48,54 +50,62 @@ fun ScanScreen(onCode: (String) -> Unit, onBack: () -> Unit) {
         )
     }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
-    LaunchedEffect(Unit) { if (!granted) ask.launch(Manifest.permission.CAMERA) }
+    LaunchedEffect(Unit) {
+        if (!granted) ask.launch(Manifest.permission.CAMERA)
+        // The barcode reader's model comes from Play services. Fetch it now, while there's a
+        // connection, so the scan round works at 6am in airplane mode.
+        runCatching {
+            ModuleInstall.getClient(context).installModules(
+                ModuleInstallRequest.newBuilder().addApi(BarcodeScanning.getClient()).build(),
+            )
+        }
+    }
     var torch by remember { mutableStateOf(false) }
     var done by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(ColdColors.Ground)
-            .safeDrawingPadding()
-            .padding(horizontal = Space.screen, vertical = Space.lg),
-        verticalArrangement = Arrangement.spacedBy(Space.lg),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = ColdColors.Ink)
+    SkyBackground(Skies.Night) {
+        val sky = LocalSky.current
+        Column(
+            Modifier
+                .fillMaxSize()
+                .safeDrawingPadding()
+                .padding(horizontal = Space.screen, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            Row(
+                Modifier.padding(start = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                IconSquareButton(SunIcons.Back, "Back", onBack)
+                Text("Register your code", style = ColdText.title, color = sky.ink)
             }
-            Text("Register a code", style = ColdText.title, color = ColdColors.Ink)
-        }
-        Text(
-            "Point the camera at any barcode or QR code that lives away from your bed: " +
-                "a kettle, a shampoo bottle, a printed sticker on the bathroom mirror.",
-            style = ColdText.body,
-            color = ColdColors.InkDim,
-        )
-        if (granted) {
-            BarcodeScanner(
-                onCode = { code ->
-                    if (!done) {
-                        done = true
-                        onCode(code)
-                    }
-                },
-                torchOn = torch,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .clip(ColdShapes.medium),
+            Text(
+                "Point the camera at any barcode or QR code that lives away from your bed: " +
+                    "toothpaste, a cereal box, the kettle. Nothing to print.",
+                style = ColdText.body,
+                color = sky.dim,
+                modifier = Modifier.padding(horizontal = 4.dp),
             )
-            TextButton(onClick = { torch = !torch }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                Text(if (torch) "Torch off" else "Torch on", style = ColdText.body, color = ColdColors.Ink)
+            if (granted) {
+                BarcodeScanner(
+                    onCode = { code ->
+                        if (!done) {
+                            done = true
+                            onCode(code)
+                        }
+                    },
+                    torchOn = torch,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .clip(ColdShapes.card),
+                )
+                QuietButton(if (torch) "Torch off" else "Torch on", { torch = !torch }, Modifier.align(Alignment.CenterHorizontally))
+            } else {
+                Text("Cold Start needs the camera to read the code.", style = ColdText.body, color = sky.mute)
+                AmberButton("Allow camera", { ask.launch(Manifest.permission.CAMERA) })
             }
-        } else {
-            Text("Cold Start needs the camera to read the code.", style = ColdText.body, color = ColdColors.InkMute)
-            Button(
-                onClick = { ask.launch(Manifest.permission.CAMERA) },
-                colors = ButtonDefaults.buttonColors(containerColor = ColdColors.Accent, contentColor = ColdColors.Ground),
-                shape = ColdShapes.small,
-            ) { Text("Allow camera", style = ColdText.prompt) }
         }
     }
 }

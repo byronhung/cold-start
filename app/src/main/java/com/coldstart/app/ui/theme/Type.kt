@@ -7,102 +7,78 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.coldstart.app.R
 
 /**
- * Three faces, each with one role — the same split as the brief:
- *
- *   Bricolage Grotesque → display: screen titles, the Stroop word
- *   Instrument Sans     → everything read: prompts, captions, settings
- *   JetBrains Mono      → every number and label: clock, alarm times, "ROUND 2 OF 3"
- *
- * All three are variable fonts: one file holds every weight. Mono is for anything that counts,
- * so digits don't jitter as the clock ticks.
+ * Sunrise type, from the approved prototype:
+ *   Outfit  → every clock and time, and titles. Light weights at huge sizes (200 at 104sp).
+ *   Figtree → everything read: prompts, captions, buttons, labels.
+ * Neither is used by Grit. Both are variable fonts bundled in the app, so they work offline at 6am.
  */
-
-// Bricolage has an optical-size axis. Display text is always big, so pin it to the big-text
-// cut (tighter spacing, finer detail) rather than the default 14pt one.
 @OptIn(ExperimentalTextApi::class)
-private fun bricolage(weight: FontWeight) = Font(
-    R.font.bricolage_grotesque,
-    weight,
-    variationSettings = FontVariation.Settings(
-        FontVariation.weight(weight.weight),
-        FontVariation.Setting("opsz", 48f),
-    ),
+private fun variable(res: Int, weight: FontWeight) =
+    Font(res, weight, variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight)))
+
+val Outfit = FontFamily(
+    listOf(FontWeight.ExtraLight, FontWeight.Light, FontWeight.Normal, FontWeight.SemiBold, FontWeight.Bold)
+        .map { variable(R.font.outfit, it) },
 )
 
-val Bricolage = FontFamily(bricolage(FontWeight.Medium), bricolage(FontWeight.Bold))
-
-val InstrumentSans = FontFamily(
-    Font(R.font.instrument_sans, FontWeight.Normal),
-    Font(R.font.instrument_sans, FontWeight.Medium),
-    Font(R.font.instrument_sans, FontWeight.SemiBold),
+val Figtree = FontFamily(
+    listOf(FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold, FontWeight.Bold)
+        .map { variable(R.font.figtree, it) },
 )
 
-val JetBrainsMono = FontFamily(
-    Font(R.font.jetbrains_mono, FontWeight.Normal),
-    Font(R.font.jetbrains_mono, FontWeight.Medium),
-    Font(R.font.jetbrains_mono, FontWeight.Bold),
-)
+private val tight = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both)
 
-/** Named for what they're used for, so a screen reads as `ColdText.alarmTime`, not `headlineSmall`. */
+/** Named for where they're used, so a screen reads `ColdText.heroClock`, not `displayLarge`. */
 object ColdText {
-    /** Screen titles: "Alarms". */
-    val title = TextStyle(
-        fontFamily = Bricolage, fontWeight = FontWeight.Bold,
-        fontSize = 30.sp, lineHeight = 34.sp, letterSpacing = (-0.4).sp,
-    )
+    /** The next-alarm clock on the list. */
+    val heroClock = TextStyle(fontFamily = Outfit, fontWeight = FontWeight.ExtraLight, fontSize = 104.sp, lineHeight = 100.sp, letterSpacing = (-0.04).em, lineHeightStyle = tight)
 
-    /** The Stroop word. The biggest thing on a puzzle screen. */
-    val stroopWord = TextStyle(
-        fontFamily = Bricolage, fontWeight = FontWeight.Bold,
-        fontSize = 56.sp, lineHeight = 60.sp, letterSpacing = (-1).sp,
-    )
+    /** The live clock while ringing. */
+    val ringClock = TextStyle(fontFamily = Outfit, fontWeight = FontWeight.ExtraLight, fontSize = 84.sp, lineHeight = 84.sp, letterSpacing = (-0.04).em, lineHeightStyle = tight)
 
-    /** The live clock on the ringing screen. */
-    val clock = TextStyle(
-        fontFamily = JetBrainsMono, fontWeight = FontWeight.Medium,
-        fontSize = 56.sp, lineHeight = 60.sp, letterSpacing = (-2).sp,
-    )
+    /** "Good morning", "Still awake?", "All quiet". */
+    val display = TextStyle(fontFamily = Outfit, fontWeight = FontWeight.ExtraLight, fontSize = 52.sp, lineHeight = 54.sp, letterSpacing = (-0.03).em)
 
-    /** An alarm's time in the list. */
-    val alarmTime = TextStyle(
-        fontFamily = JetBrainsMono, fontWeight = FontWeight.Medium,
-        fontSize = 34.sp, lineHeight = 38.sp, letterSpacing = (-1).sp,
-    )
+    /** An alarm's time on its card. */
+    val alarmTime = TextStyle(fontFamily = Outfit, fontWeight = FontWeight.Light, fontSize = 40.sp, lineHeight = 40.sp, letterSpacing = (-0.03).em, lineHeightStyle = tight)
 
-    /** Uppercase labels: "ROUND 2 OF 3", repeat days. Pass text already uppercased. */
-    val label = TextStyle(
-        fontFamily = JetBrainsMono, fontWeight = FontWeight.Medium,
-        fontSize = 11.sp, lineHeight = 14.sp, letterSpacing = 1.3.sp,
-    )
+    /** AM / PM beside a time. */
+    val period = TextStyle(fontFamily = Outfit, fontWeight = FontWeight.Normal, fontSize = 15.sp)
 
-    /** Puzzle instructions: "Tap the ink colour". Four words at most. */
-    val prompt = TextStyle(
-        fontFamily = InstrumentSans, fontWeight = FontWeight.Medium,
-        fontSize = 17.sp, lineHeight = 22.sp,
-    )
+    /** Screen titles: "Settings". */
+    val title = TextStyle(fontFamily = Outfit, fontWeight = FontWeight.SemiBold, fontSize = 26.sp, letterSpacing = (-0.01).em)
 
-    val body = TextStyle(
-        fontFamily = InstrumentSans, fontWeight = FontWeight.Normal,
-        fontSize = 16.sp, lineHeight = 24.sp,
-    )
+    /** The app name and small headers: "Cold Start", "Edit alarm". */
+    val header = TextStyle(fontFamily = Outfit, fontWeight = FontWeight.SemiBold, fontSize = 19.sp, letterSpacing = (-0.01).em)
 
-    val caption = TextStyle(
-        fontFamily = InstrumentSans, fontWeight = FontWeight.Normal,
-        fontSize = 13.sp, lineHeight = 18.sp,
-    )
+    /** The Stroop word. */
+    val stroopWord = TextStyle(fontFamily = Outfit, fontWeight = FontWeight.Bold, fontSize = 62.sp, lineHeight = 66.sp, letterSpacing = (-0.02).em)
+
+    /** Wheel picker, centre row. */
+    val wheel = TextStyle(fontFamily = Outfit, fontWeight = FontWeight.Normal, fontSize = 34.sp)
+
+    /** Uppercase labels: "NEXT ALARM", "ROUND 2 OF 5". Pass text already uppercased. */
+    val label = TextStyle(fontFamily = Figtree, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 0.16.em)
+
+    val prompt = TextStyle(fontFamily = Figtree, fontWeight = FontWeight.Medium, fontSize = 16.sp)
+    val body = TextStyle(fontFamily = Figtree, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 23.sp)
+    val bodyStrong = TextStyle(fontFamily = Figtree, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 22.sp)
+    val caption = TextStyle(fontFamily = Figtree, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp)
+    val chip = TextStyle(fontFamily = Figtree, fontWeight = FontWeight.SemiBold, fontSize = 11.5.sp)
+    val day = TextStyle(fontFamily = Figtree, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, letterSpacing = 0.06.em)
+    val button = TextStyle(fontFamily = Figtree, fontWeight = FontWeight.Bold, fontSize = 16.sp)
 }
 
-/** Material's slots, pointed at our faces, so any plain `Text()` is Instrument Sans by default. */
+/** Material's slots pointed at Figtree, so any plain `Text()` matches. */
 val ColdTypography = Typography(
-    // The time picker's big hour/minute boxes read this slot.
-    displayLarge = ColdText.clock,
     bodyLarge = ColdText.body,
-    bodyMedium = ColdText.body.copy(fontSize = 14.sp, lineHeight = 20.sp),
+    bodyMedium = ColdText.caption,
     bodySmall = ColdText.caption,
-    titleLarge = ColdText.title,
-    labelSmall = ColdText.label,
+    labelLarge = ColdText.button,
 )
