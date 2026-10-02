@@ -23,6 +23,8 @@ data class RingSession(
     /** "Still awake?" checks after solving, 0–3. */
     val wakeChecks: Int = 0,
     val preset: Preset = Preset.NORMAL,
+    /** Null = the phone's default alarm sound. */
+    val soundUri: String? = null,
 )
 
 /** A solved round, before it's written to the database. */

@@ -1,5 +1,14 @@
 package com.coldstart.app.ui.edit
 
+import android.app.Activity
+import android.content.Intent
+import android.media.RingtoneManager
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.text.style.TextOverflow
 import android.text.format.DateFormat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -67,6 +76,7 @@ fun AlarmEditScreen(viewModel: AlarmEditViewModel, onScanForCode: () -> Unit, on
             onToggleDay = viewModel::toggleDay,
             onChecks = viewModel::setWakeChecks,
             onDifficulty = viewModel::setDifficulty,
+            onSound = viewModel::setSound,
             onLabel = viewModel::setLabel,
             onDelete = { viewModel.delete(onDone) },
         )
@@ -87,6 +97,7 @@ private fun AlarmEditContent(
     onToggleDay: (Int) -> Unit,
     onChecks: (Int) -> Unit,
     onDifficulty: (Preset) -> Unit,
+    onSound: (String?) -> Unit,
     onLabel: (String) -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -173,6 +184,8 @@ private fun AlarmEditContent(
                 Segmented(listOf("Off", "1", "2", "3"), draft.wakeChecks, onChecks)
                 Text(checksLine(draft.wakeChecks), style = ColdText.caption, color = sky.dim)
             }
+
+            SoundRow(draft.soundUri, onSound)
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SectionLabel("Label", Modifier.padding(start = 4.dp))
@@ -281,4 +294,64 @@ private fun checksLine(n: Int): String = when (n) {
     0 -> "Off. Once you solve the puzzles, the alarm is done for the morning."
     1 -> "5 min after you solve, one “Still awake?” check. If your phone's in use it passes by itself. Miss it and the alarm rings again, from round 1."
     else -> "Starting 5 min after you solve: $n “Still awake?” checks, 5 min apart. Any you miss rings the alarm again, from round 1."
+}
+
+/**
+ * The alarm's sound. Opens Android's own picker: every built-in tone, plus files on the phone.
+ * Picking "Default" stores null, so the alarm follows the phone's default alarm sound.
+ */
+@Composable
+private fun SoundRow(soundUri: String?, onSound: (String?) -> Unit) {
+    val sky = LocalSky.current
+    val context = LocalContext.current
+    val title = remember(soundUri) {
+        if (soundUri == null) {
+            "Phone's default alarm sound"
+        } else {
+            runCatching { RingtoneManager.getRingtone(context, Uri.parse(soundUri))?.getTitle(context) }
+                .getOrNull() ?: "Custom sound"
+        }
+    }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode != Activity.RESULT_OK) return@rememberLauncherForActivityResult
+        val picked: Uri? = if (Build.VERSION.SDK_INT >= 33) {
+            result.data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            result.data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+        }
+        val isDefault = picked == null || picked == Settings.System.DEFAULT_ALARM_ALERT_URI
+        onSound(if (isDefault) null else picked.toString())
+    }
+
+    GlassCard(
+        Modifier
+            .fillMaxWidth()
+            .springClick(0.97f) {
+                picker.launch(
+                    Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
+                        .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+                        .putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Alarm sound")
+                        .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                        .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+                        .putExtra(RingtoneManager.EXTRA_RINGTONE_DEFAULT_URI, Settings.System.DEFAULT_ALARM_ALERT_URI)
+                        .putExtra(
+                            RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
+                            soundUri?.let { Uri.parse(it) } ?: Settings.System.DEFAULT_ALARM_ALERT_URI,
+                        ),
+                )
+            },
+    ) {
+        Row(
+            Modifier.padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                SectionLabel("Sound")
+                Text(title, style = ColdText.bodyStrong, color = sky.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Text("Change", style = ColdText.caption, color = sky.sunInk)
+        }
+    }
 }

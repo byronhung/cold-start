@@ -30,6 +30,8 @@ data class Alarm(
     @ColumnInfo(defaultValue = "1") val difficulty: Int = 1,
     /** How it stops, as [com.coldstart.app.puzzle.WakeMethod.code]: 0 Puzzles, 1 Scan, 2 Puzzles + scan. */
     @ColumnInfo(defaultValue = "0") val wakeMethod: Int = 0,
+    /** The sound picked for this alarm (a content URI). Null = the phone's default alarm sound. */
+    val soundUri: String? = null,
 )
 
 enum class RoundType {

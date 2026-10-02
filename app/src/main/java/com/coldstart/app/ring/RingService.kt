@@ -62,7 +62,7 @@ class RingService : Service() {
             }
             controller.begin(session)
             goForeground(Notifications.ringing(this@RingService, session))
-            ringer = Ringer(this@RingService).also { it.start(scope) }
+            ringer = Ringer(this@RingService).also { it.start(scope, session.soundUri) }
             delay(RING_TIMEOUT_MS)
             controller.finish(WakeOutcome.TIMED_OUT, emptyList())
         }

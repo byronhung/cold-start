@@ -28,6 +28,8 @@ data class EditDraft(
     val wakeMethod: Int,
     /** [Preset.code]. */
     val difficulty: Int,
+    /** Null = the phone's default alarm sound. */
+    val soundUri: String?,
     val isNew: Boolean,
 )
 
@@ -56,7 +58,7 @@ class AlarmEditViewModel(
                 val alarm = repository.get(alarmId)
                 original = alarm
                 draft = alarm?.let {
-                    EditDraft(it.hour, it.minute, it.repeatDays, it.label, it.wakeChecks, it.wakeMethod, it.difficulty, isNew = false)
+                    EditDraft(it.hour, it.minute, it.repeatDays, it.label, it.wakeChecks, it.wakeMethod, it.difficulty, it.soundUri, isNew = false)
                 } ?: newDraft()
             }
         }
@@ -65,7 +67,7 @@ class AlarmEditViewModel(
     // New alarms get one wake check: enough to catch going back to sleep, rarely noticed when awake.
     private fun newDraft() = EditDraft(
         hour = 7, minute = 0, repeatDays = Weekdays.WEEKDAYS, label = "",
-        wakeChecks = 1, wakeMethod = WakeMethod.PUZZLES.code, difficulty = Preset.NORMAL.code, isNew = true,
+        wakeChecks = 1, wakeMethod = WakeMethod.PUZZLES.code, difficulty = Preset.NORMAL.code, soundUri = null, isNew = true,
     )
 
     fun setTime(hour: Int, minute: Int) {
@@ -83,6 +85,10 @@ class AlarmEditViewModel(
 
     fun setWakeChecks(count: Int) {
         draft = draft?.copy(wakeChecks = count.coerceIn(0, WakeCheck.MAX))
+    }
+
+    fun setSound(uri: String?) {
+        draft = draft?.copy(soundUri = uri)
     }
 
     fun setDifficulty(preset: Preset) {
@@ -125,6 +131,7 @@ class AlarmEditViewModel(
                     wakeChecks = d.wakeChecks,
                     wakeMethod = d.wakeMethod,
                     difficulty = d.difficulty,
+                    soundUri = d.soundUri,
                     enabled = true,
                 ),
             )

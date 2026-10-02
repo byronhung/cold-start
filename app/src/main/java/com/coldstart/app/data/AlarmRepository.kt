@@ -114,6 +114,7 @@ class AlarmRepository(
             qrCode = if (RoundType.QR_SCAN in rounds) wakeCode else null,
             wakeChecks = alarm.wakeChecks.coerceIn(0, WakeCheck.MAX),
             preset = preset,
+            soundUri = alarm.soundUri,
         )
     }
 

@@ -6,6 +6,7 @@ import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.media.ToneGenerator
+import android.net.Uri
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.Log
@@ -37,10 +38,11 @@ class Ringer(private val context: Context) {
     private var guard: Job? = null
     private var originalVolume = -1
 
-    fun start(scope: CoroutineScope) {
+    /** [soundUri]: the alarm's own sound, or null for the phone's default alarm sound. */
+    fun start(scope: CoroutineScope, soundUri: String? = null) {
         originalVolume = audio.getStreamVolume(AudioManager.STREAM_ALARM)
         holdVolume()
-        player = createPlayer()
+        player = createPlayer(soundUri)
         if (player != null) {
             player?.start()
         } else {
@@ -82,8 +84,13 @@ class Ringer(private val context: Context) {
         }
     }
 
-    private fun createPlayer(): MediaPlayer? {
+    /**
+     * The alarm's own sound first. If it can't be read (deleted, or the phone restarted and hasn't
+     * been unlocked yet), the phone's default alarm sound, then its ringtone, then a generated tone.
+     */
+    private fun createPlayer(soundUri: String?): MediaPlayer? {
         val candidates = listOfNotNull(
+            soundUri?.let { runCatching { Uri.parse(it) }.getOrNull() },
             RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_ALARM),
             RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
             RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE),
