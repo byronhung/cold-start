@@ -1,5 +1,16 @@
 package com.coldstart.app.puzzle
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -32,14 +43,17 @@ import com.coldstart.app.ui.theme.Sun
 import kotlin.random.Random
 
 /**
- * The word says one colour, the ink is another: tap the ink. A round is 2–4 words depending on
- * level. A wrong tap deals a fresh word, so mashing the four buttons doesn't get you through.
+ * The word says one colour, the ink is another. Each word randomly asks for the ink or for the
+ * word itself, so you have to read the instruction every time: that switch is what wakes the brain.
+ * A round is 2–4 words depending on level. A wrong tap deals a fresh word (same ask), so mashing
+ * the four buttons doesn't get you through.
  */
 @Composable
 fun StroopPuzzle(level: Int, onMiss: () -> Unit, onSolved: () -> Unit) {
     val rng = remember { Random(System.nanoTime()) }
     val total = remember(level) { stroopWordCount(level) }
     val swatches = remember { InkColour.entries.shuffled(rng) }
+    val asks = remember(level) { stroopAsks(total, rng) }
     var word by remember { mutableStateOf(stroopWord(rng)) }
     var cleared by remember { mutableIntStateOf(0) }
     var misses by remember { mutableIntStateOf(0) }
@@ -47,7 +61,7 @@ fun StroopPuzzle(level: Int, onMiss: () -> Unit, onSolved: () -> Unit) {
 
     fun tap(colour: InkColour) {
         if (finished) return
-        if (colour == word.ink) {
+        if (colour == word.answer(asks[cleared])) {
             if (cleared + 1 == total) {
                 finished = true
                 onSolved()
@@ -67,7 +81,11 @@ fun StroopPuzzle(level: Int, onMiss: () -> Unit, onSolved: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        PuzzlePrompt("Tap the ink colour")
+        AnimatedContent(
+            targetState = asks[cleared],
+            transitionSpec = { (fadeIn(tween(220)) + scaleIn(tween(220), initialScale = 0.9f)).togetherWith(fadeOut(tween(120))) },
+            label = "ask",
+        ) { ask -> AskPrompt(ask) }
         Text(word.word.name, style = ColdText.stroopWord, color = inkColour(word.ink), modifier = Modifier.shakeOn(misses))
         Text("${cleared + 1} OF $total", style = ColdText.label, color = Sun.OnGlass.copy(alpha = 0.6f))
         Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
@@ -99,4 +117,20 @@ fun StroopPuzzle(level: Int, onMiss: () -> Unit, onSolved: () -> Unit) {
         }
         MissNote(misses)
     }
+}
+
+/** "Tap the INK colour" / "Tap the WORD": the part that changes is in the sun's colour. */
+@Composable
+private fun AskPrompt(ask: StroopAsk) {
+    Text(
+        buildAnnotatedString {
+            append("Tap the ")
+            withStyle(SpanStyle(color = Sun.Glow, fontWeight = FontWeight.Bold)) {
+                append(if (ask == StroopAsk.INK) "INK" else "WORD")
+            }
+            append(if (ask == StroopAsk.INK) " colour" else "")
+        },
+        style = ColdText.prompt.copy(fontSize = 18.sp),
+        color = Sun.OnGlass.copy(alpha = 0.85f),
+    )
 }

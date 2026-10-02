@@ -26,6 +26,8 @@ data class Alarm(
     @ColumnInfo(defaultValue = "0") val wakeChecks: Int = 1,
     /** Last round is scanning the shared wake-up code. */
     @ColumnInfo(defaultValue = "0") val finishWithScan: Boolean = false,
+    /** Difficulty preset, as [com.coldstart.app.puzzle.Preset.code]: 0 Gentle, 1 Normal, 2 Hard. */
+    @ColumnInfo(defaultValue = "1") val difficulty: Int = 1,
 )
 
 enum class RoundType {

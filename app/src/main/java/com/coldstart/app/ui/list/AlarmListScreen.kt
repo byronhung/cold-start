@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coldstart.app.alarm.NextAlarm
 import com.coldstart.app.alarm.Weekdays
+import com.coldstart.app.puzzle.Preset
 import com.coldstart.app.ui.components.Chip
 import com.coldstart.app.ui.components.GlassCard
 import com.coldstart.app.ui.components.IconSquareButton
@@ -215,6 +216,11 @@ private fun AlarmCard(row: AlarmRowUi, index: Int, onClick: () -> Unit, onToggle
                     )
                     if (row.wakeChecks > 0) Chip(if (row.wakeChecks == 1) "1 check" else "${row.wakeChecks} checks", SunIcons.Check)
                     if (row.scan) Chip("Scan", SunIcons.Scan)
+                    when (Preset.of(row.difficulty)) {
+                        Preset.GENTLE -> Chip("Gentle")
+                        Preset.HARD -> Chip("Hard")
+                        Preset.NORMAL -> Unit
+                    }
                 }
             }
             SpringToggle(row.enabled, onToggle, label = "${row.time} ${row.period.orEmpty()} on")

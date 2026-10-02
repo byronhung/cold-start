@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coldstart.app.alarm.Weekdays
 import com.coldstart.app.alarm.formatTime
+import com.coldstart.app.puzzle.Preset
 import com.coldstart.app.ui.components.AmberButton
 import com.coldstart.app.ui.components.DayPill
 import com.coldstart.app.ui.components.GlassCard
@@ -63,6 +64,7 @@ fun AlarmEditScreen(viewModel: AlarmEditViewModel, onOpenSettings: () -> Unit, o
             onTime = viewModel::setTime,
             onToggleDay = viewModel::toggleDay,
             onChecks = viewModel::setWakeChecks,
+            onDifficulty = viewModel::setDifficulty,
             onScan = viewModel::setFinishWithScan,
             onLabel = viewModel::setLabel,
             onOpenSettings = onOpenSettings,
@@ -83,6 +85,7 @@ private fun AlarmEditContent(
     onTime: (Int, Int) -> Unit,
     onToggleDay: (Int) -> Unit,
     onChecks: (Int) -> Unit,
+    onDifficulty: (Preset) -> Unit,
     onScan: (Boolean) -> Unit,
     onLabel: (String) -> Unit,
     onOpenSettings: () -> Unit,
@@ -144,6 +147,13 @@ private fun AlarmEditContent(
                         DayPill(DAY_LETTERS[i], DAY_NAMES[i], Weekdays.has(draft.repeatDays, day)) { onToggleDay(i) }
                     }
                 }
+            }
+
+            Section {
+                SectionLabel("Difficulty")
+                val preset = Preset.of(draft.difficulty)
+                Segmented(listOf("Gentle", "Normal", "Hard"), Preset.entries.indexOf(preset), onSelect = { onDifficulty(Preset.entries[it]) })
+                Text(difficultyLine(preset), style = ColdText.caption, color = sky.dim)
             }
 
             Section {
@@ -274,6 +284,12 @@ private fun repeatPhrase(days: Int): String = when (days) {
     0b1111111 -> "every day"
     else -> "on " + DayOfWeek.entries.filter { Weekdays.has(days, it) }
         .joinToString(", ") { DAY_NAMES[it.value - 1].take(3) }
+}
+
+private fun difficultyLine(preset: Preset): String = when (preset) {
+    Preset.GENTLE -> "3 rounds of the easiest puzzles. For mornings you wake up fine."
+    Preset.NORMAL -> "5 rounds. Starts hard and eases off if you've been slow lately."
+    Preset.HARD -> "7 rounds at the hardest level, every time."
 }
 
 private fun checksLine(n: Int): String = when (n) {

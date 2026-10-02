@@ -9,6 +9,7 @@ import com.coldstart.app.alarm.WakeCheck
 import com.coldstart.app.alarm.Weekdays
 import com.coldstart.app.data.Alarm
 import com.coldstart.app.data.AlarmRepository
+import com.coldstart.app.puzzle.Preset
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -23,6 +24,8 @@ data class EditDraft(
     val label: String,
     val wakeChecks: Int,
     val finishWithScan: Boolean,
+    /** [Preset.code]. */
+    val difficulty: Int,
     val isNew: Boolean,
 )
 
@@ -51,7 +54,7 @@ class AlarmEditViewModel(
                 val alarm = repository.get(alarmId)
                 original = alarm
                 draft = alarm?.let {
-                    EditDraft(it.hour, it.minute, it.repeatDays, it.label, it.wakeChecks, it.finishWithScan, isNew = false)
+                    EditDraft(it.hour, it.minute, it.repeatDays, it.label, it.wakeChecks, it.finishWithScan, it.difficulty, isNew = false)
                 } ?: newDraft()
             }
         }
@@ -60,7 +63,7 @@ class AlarmEditViewModel(
     // New alarms get one wake check: enough to catch going back to sleep, rarely noticed when awake.
     private fun newDraft() = EditDraft(
         hour = 7, minute = 0, repeatDays = Weekdays.WEEKDAYS, label = "",
-        wakeChecks = 1, finishWithScan = false, isNew = true,
+        wakeChecks = 1, finishWithScan = false, difficulty = Preset.NORMAL.code, isNew = true,
     )
 
     fun setTime(hour: Int, minute: Int) {
@@ -78,6 +81,10 @@ class AlarmEditViewModel(
 
     fun setWakeChecks(count: Int) {
         draft = draft?.copy(wakeChecks = count.coerceIn(0, WakeCheck.MAX))
+    }
+
+    fun setDifficulty(preset: Preset) {
+        draft = draft?.copy(difficulty = preset.code)
     }
 
     fun setFinishWithScan(on: Boolean) {
@@ -99,6 +106,7 @@ class AlarmEditViewModel(
                     label = d.label.trim(),
                     wakeChecks = d.wakeChecks,
                     finishWithScan = d.finishWithScan,
+                    difficulty = d.difficulty,
                     enabled = true,
                 ),
             )

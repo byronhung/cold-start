@@ -160,4 +160,46 @@ class PuzzlesTest {
         assertEquals("1 m 12 s", formatDuration(72_000))
         assertEquals("1 h 3 m", formatDuration(3_780_000))
     }
+
+    // ---------- Stroop asks ----------
+
+    @Test fun `every round of two or more words asks for both ink and word`() {
+        for (n in 2..4) repeat(200) { seed ->
+            assertEquals(StroopAsk.entries.toSet(), stroopAsks(n, Random(seed)).toSet())
+        }
+    }
+
+    @Test fun `asks are not a fixed alternation`() {
+        val patterns = (0 until 200).map { stroopAsks(4, Random(it)) }.toSet()
+        assertTrue(patterns.size > 4)
+    }
+
+    @Test fun `the answer follows the ask`() {
+        val w = StroopWord(word = InkColour.RED, ink = InkColour.BLUE)
+        assertEquals(InkColour.BLUE, w.answer(StroopAsk.INK))
+        assertEquals(InkColour.RED, w.answer(StroopAsk.WORD))
+    }
+
+    // ---------- presets ----------
+
+    @Test fun `presets set the rounds`() {
+        assertEquals(listOf(3, 5, 7), Preset.entries.map { it.rounds })
+    }
+
+    @Test fun `gentle is always easiest, hard always hardest, normal follows adaptive`() {
+        assertEquals(1, Preset.GENTLE.level(adaptive = 3))
+        assertEquals(3, Preset.HARD.level(adaptive = 1))
+        assertEquals(2, Preset.NORMAL.level(adaptive = 2))
+    }
+
+    @Test fun `a gentle morning is still one of each type`() {
+        repeat(100) { seed ->
+            val plan = planMorning(pool, null, Random(seed), rounds = Preset.GENTLE.rounds)
+            assertEquals(pool.toSet(), plan.toSet())
+        }
+    }
+
+    @Test fun `unknown preset codes fall back to normal`() {
+        assertEquals(Preset.NORMAL, Preset.of(42))
+    }
 }

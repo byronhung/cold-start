@@ -3,6 +3,7 @@ package com.coldstart.app.ring
 import com.coldstart.app.data.AlarmRepository
 import com.coldstart.app.data.RoundType
 import com.coldstart.app.data.WakeOutcome
+import com.coldstart.app.puzzle.Preset
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +22,7 @@ data class RingSession(
     val qrCode: String?,
     /** "Still awake?" checks after solving, 0–3. */
     val wakeChecks: Int = 0,
+    val preset: Preset = Preset.NORMAL,
 )
 
 /** A solved round, before it's written to the database. */

@@ -6,6 +6,7 @@ import com.coldstart.app.alarm.Weekdays
 import com.coldstart.app.puzzle.Difficulty
 import com.coldstart.app.puzzle.Levels
 import com.coldstart.app.puzzle.PastRound
+import com.coldstart.app.puzzle.Preset
 import com.coldstart.app.puzzle.planMorning
 import com.coldstart.app.ring.RingSession
 import com.coldstart.app.ring.RoundResultDraft
@@ -89,9 +90,10 @@ class AlarmRepository(
         val scan = alarm.finishWithScan && wakeCode != null
         val puzzles = alarm.roundTypes.filter { it != RoundType.QR_SCAN }.ifEmpty { RoundType.MORNING_DEFAULT }
         val lastOpener = wakeDao.lastOpener()?.let { runCatching { RoundType.valueOf(it) }.getOrNull() }
-        val rounds = planMorning(puzzles, lastOpener, Random.Default) +
+        val preset = Preset.of(alarm.difficulty)
+        val rounds = planMorning(puzzles, lastOpener, Random.Default, rounds = preset.rounds) +
             if (scan) listOf(RoundType.QR_SCAN) else emptyList()
-        val levels = puzzles.associateWith { levelFor(it) }
+        val levels = puzzles.associateWith { preset.level(adaptive = levelFor(it)) }
 
         val wakeId = wakeDao.insertWake(
             WakeLog(alarmId = alarmId, firedAt = System.currentTimeMillis(), opener = rounds.first()),
@@ -106,6 +108,7 @@ class AlarmRepository(
             levels = levels,
             qrCode = if (scan) wakeCode else null,
             wakeChecks = alarm.wakeChecks.coerceIn(0, WakeCheck.MAX),
+            preset = preset,
         )
     }
 
@@ -131,7 +134,9 @@ class AlarmRepository(
     suspend fun finishWake(session: RingSession, outcome: WakeOutcome, results: List<RoundResultDraft>) {
         val wakeId = session.wakeId
         wakeDao.finish(wakeId, System.currentTimeMillis(), outcome.name)
-        if (results.isNotEmpty()) {
+        // Only Normal mornings teach the automatic difficulty: a Gentle or Hard one says nothing
+        // about how fast you are at your own level.
+        if (results.isNotEmpty() && session.preset.feedsAdaptive) {
             wakeDao.insertResults(
                 results.map { RoundResult(wakeId = wakeId, type = it.type, level = it.level, solveMs = it.solveMs, misses = it.misses) },
             )

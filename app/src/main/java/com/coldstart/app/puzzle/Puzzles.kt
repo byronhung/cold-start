@@ -16,6 +16,36 @@ object Levels {
     const val DEFAULT = 3
 }
 
+// ---------- difficulty presets ----------
+
+/**
+ * Per alarm, chosen on the edit screen. Normal is the default and the only one that feeds the
+ * automatic difficulty, so a Gentle weekend never makes the weekday alarm easier.
+ */
+enum class Preset(val code: Int, val rounds: Int) {
+    /** For people who wake easily: 3 rounds, easiest puzzles. */
+    GENTLE(0, 3),
+
+    /** 5 rounds, starts at the top level and eases down if mornings are slow. */
+    NORMAL(1, 5),
+
+    /** 7 rounds, top level, never eases down. */
+    HARD(2, 7);
+
+    /** This preset's level for a puzzle type, given what adaptive difficulty would choose. */
+    fun level(adaptive: Int): Int = when (this) {
+        GENTLE -> Levels.MIN
+        NORMAL -> adaptive
+        HARD -> Levels.MAX
+    }
+
+    val feedsAdaptive: Boolean get() = this == NORMAL
+
+    companion object {
+        fun of(code: Int): Preset = entries.firstOrNull { it.code == code } ?: NORMAL
+    }
+}
+
 // ---------- the morning ----------
 
 /** Five rounds: long enough that solving it is actually waking up (~60–90 s). */
@@ -58,6 +88,25 @@ data class StroopWord(val word: InkColour, val ink: InkColour)
 
 /** Words per round: 2, 3, 4 at levels 1–3. */
 fun stroopWordCount(level: Int): Int = level.coerceIn(Levels.MIN, Levels.MAX) + 1
+
+/** What a Stroop word asks you to tap: the colour of the ink, or the colour the word names. */
+enum class StroopAsk { INK, WORD }
+
+/**
+ * Which ask each word in a round gets: random, so you have to read the instruction every time,
+ * and both kinds appear in any round of two or more words.
+ */
+fun stroopAsks(count: Int, rng: Random): List<StroopAsk> {
+    if (count <= 0) return emptyList()
+    if (count == 1) return listOf(StroopAsk.entries.random(rng))
+    while (true) {
+        val asks = List(count) { StroopAsk.entries.random(rng) }
+        if (asks.toSet().size == 2) return asks
+    }
+}
+
+/** The colour a tap must match for this word and ask. */
+fun StroopWord.answer(ask: StroopAsk): InkColour = if (ask == StroopAsk.INK) ink else word
 
 fun stroopWord(rng: Random): StroopWord {
     val word = InkColour.entries.random(rng)
