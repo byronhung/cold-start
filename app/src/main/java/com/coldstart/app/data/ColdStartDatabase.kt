@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Alarm::class, WakeLog::class, RoundResult::class, AppSettings::class], version = 4, exportSchema = false)
+@Database(entities = [Alarm::class, WakeLog::class, RoundResult::class, AppSettings::class], version = 5, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class ColdStartDatabase : RoomDatabase() {
     abstract fun alarmDao(): AlarmDao
@@ -28,8 +28,16 @@ abstract class ColdStartDatabase : RoomDatabase() {
             // fails harmlessly if the phone is still locked.
             runCatching { deviceContext.moveDatabaseFrom(context, NAME) }
             return Room.databaseBuilder(deviceContext, ColdStartDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .build()
+        }
+
+        /** v5: how to wake up (puzzles / scan / both). An alarm that finished with a scan becomes "both". */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `alarms` ADD COLUMN `wakeMethod` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("UPDATE `alarms` SET `wakeMethod` = 2 WHERE `finishWithScan` = 1")
+            }
         }
 
         /** v4: per-alarm difficulty preset. Existing alarms are Normal, which is what they were. */

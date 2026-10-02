@@ -92,7 +92,7 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("scan") {
                         ScanScreen(
-                            // Hand the code back to Settings underneath, then return to it.
+                            // Hand the code back to whichever screen opened the scanner (Settings or an alarm).
                             onCode = { code ->
                                 nav.previousBackStackEntry?.savedStateHandle?.set(SCANNED_CODE, code)
                                 if (nav.currentDestination?.route == "scan") nav.popBackStack()
@@ -108,9 +108,16 @@ class MainActivity : ComponentActivity() {
                         val vm: AlarmEditViewModel = viewModel(
                             factory = viewModelFactory { initializer { AlarmEditViewModel(repository, id) } },
                         )
+                        val scanned by entry.savedStateHandle.getStateFlow<String?>(SCANNED_CODE, null).collectAsState()
+                        LaunchedEffect(scanned) {
+                            scanned?.let {
+                                vm.codeScanned(it)
+                                entry.savedStateHandle[SCANNED_CODE] = null
+                            }
+                        }
                         AlarmEditScreen(
                             viewModel = vm,
-                            onOpenSettings = { nav.navigate("settings") },
+                            onScanForCode = { nav.navigate("scan") },
                             // Only pop if we're still on the edit screen, so a double tap can't pop the list too.
                             onDone = {
                                 if (nav.currentDestination?.route?.startsWith("edit") == true) nav.popBackStack()

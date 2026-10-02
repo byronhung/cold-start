@@ -18,7 +18,7 @@ import java.time.LocalDateTime
  *   adb shell am broadcast -n com.coldstart.app/.DebugReceiver -a com.coldstart.app.debug.SOLVE   (as if all rounds were solved: starts wake checks)
  *
  * ADD also takes --ei checks N (wake checks, default 0), --ei checkDelaySec S (seconds between
- * checks, instead of 5 minutes; lasts until the app process dies) and --ez scan true.
+ * checks, instead of 5 minutes; lasts until the app process dies) and --ei wakeMethod M (0 puzzles, 1 scan, 2 both).
  *
  * ADD saves a one-off alarm through the repository, so it's scheduled exactly like a real one.
  */
@@ -40,7 +40,7 @@ class DebugReceiver : BroadcastReceiver() {
                                 minute = at.minute,
                                 label = "Test",
                                 wakeChecks = intent.getIntExtra("checks", 0),
-                                finishWithScan = intent.getBooleanExtra("scan", false),
+                                wakeMethod = intent.getIntExtra("wakeMethod", 0),
                             ),
                         )
                         Log.i(TAG, "Added test alarm $id at ${at.hour}:${at.minute}")

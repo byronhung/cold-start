@@ -24,10 +24,12 @@ data class Alarm(
      * get 1; alarms from before v0.2 get 0 (the column default) so nothing changes under them.
      */
     @ColumnInfo(defaultValue = "0") val wakeChecks: Int = 1,
-    /** Last round is scanning the shared wake-up code. */
+    /** Unused since v5: replaced by [wakeMethod] (the migration carried its value over). */
     @ColumnInfo(defaultValue = "0") val finishWithScan: Boolean = false,
     /** Difficulty preset, as [com.coldstart.app.puzzle.Preset.code]: 0 Gentle, 1 Normal, 2 Hard. */
     @ColumnInfo(defaultValue = "1") val difficulty: Int = 1,
+    /** How it stops, as [com.coldstart.app.puzzle.WakeMethod.code]: 0 Puzzles, 1 Scan, 2 Puzzles + scan. */
+    @ColumnInfo(defaultValue = "0") val wakeMethod: Int = 0,
 )
 
 enum class RoundType {

@@ -34,6 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coldstart.app.alarm.Weekdays
 import com.coldstart.app.alarm.formatTime
 import com.coldstart.app.puzzle.Preset
+import com.coldstart.app.puzzle.WakeMethod
 import com.coldstart.app.ui.components.AmberButton
 import com.coldstart.app.ui.components.DayPill
 import com.coldstart.app.ui.components.GlassCard
@@ -52,22 +53,21 @@ import java.time.DayOfWeek
 import java.time.LocalTime
 
 @Composable
-fun AlarmEditScreen(viewModel: AlarmEditViewModel, onOpenSettings: () -> Unit, onDone: () -> Unit) {
+fun AlarmEditScreen(viewModel: AlarmEditViewModel, onScanForCode: () -> Unit, onDone: () -> Unit) {
     val wakeCode by viewModel.wakeCode.collectAsStateWithLifecycle()
     SkyBackground(Skies.forHour(LocalTime.now().hour)) {
         val draft = viewModel.draft ?: return@SkyBackground
         AlarmEditContent(
             draft = draft,
             hasWakeCode = wakeCode != null,
+            onMethod = { if (viewModel.pickMethod(it)) onScanForCode() },
             onCancel = onDone,
             onSave = { viewModel.save(onDone) },
             onTime = viewModel::setTime,
             onToggleDay = viewModel::toggleDay,
             onChecks = viewModel::setWakeChecks,
             onDifficulty = viewModel::setDifficulty,
-            onScan = viewModel::setFinishWithScan,
             onLabel = viewModel::setLabel,
-            onOpenSettings = onOpenSettings,
             onDelete = { viewModel.delete(onDone) },
         )
     }
@@ -80,15 +80,14 @@ private val DAY_NAMES = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Fr
 private fun AlarmEditContent(
     draft: EditDraft,
     hasWakeCode: Boolean,
+    onMethod: (WakeMethod) -> Unit,
     onCancel: () -> Unit,
     onSave: () -> Unit,
     onTime: (Int, Int) -> Unit,
     onToggleDay: (Int) -> Unit,
     onChecks: (Int) -> Unit,
     onDifficulty: (Preset) -> Unit,
-    onScan: (Boolean) -> Unit,
     onLabel: (String) -> Unit,
-    onOpenSettings: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val sky = LocalSky.current
@@ -149,11 +148,21 @@ private fun AlarmEditContent(
                 }
             }
 
+            val method = WakeMethod.of(draft.wakeMethod)
             Section {
-                SectionLabel("Difficulty")
-                val preset = Preset.of(draft.difficulty)
-                Segmented(listOf("Gentle", "Normal", "Hard"), Preset.entries.indexOf(preset), onSelect = { onDifficulty(Preset.entries[it]) })
-                Text(difficultyLine(preset), style = ColdText.caption, color = sky.dim)
+                SectionLabel("How to wake up")
+                Segmented(listOf("Puzzles", "Scan", "Both"), WakeMethod.entries.indexOf(method), onSelect = { onMethod(WakeMethod.entries[it]) })
+                Text(methodLine(method, hasWakeCode), style = ColdText.caption, color = sky.dim)
+            }
+
+            // Difficulty only means something when there are puzzles.
+            if (method != WakeMethod.SCAN) {
+                Section {
+                    SectionLabel("Difficulty")
+                    val preset = Preset.of(draft.difficulty)
+                    Segmented(listOf("Gentle", "Normal", "Hard"), Preset.entries.indexOf(preset), onSelect = { onDifficulty(Preset.entries[it]) })
+                    Text(difficultyLine(preset), style = ColdText.caption, color = sky.dim)
+                }
             }
 
             Section {
@@ -163,38 +172,6 @@ private fun AlarmEditContent(
                 }
                 Segmented(listOf("Off", "1", "2", "3"), draft.wakeChecks, onChecks)
                 Text(checksLine(draft.wakeChecks), style = ColdText.caption, color = sky.dim)
-            }
-
-            GlassCard(Modifier.fillMaxWidth()) {
-                Row(
-                    Modifier.padding(18.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                ) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("Finish with a scan", style = ColdText.bodyStrong, color = sky.ink)
-                        Text(
-                            when {
-                                !hasWakeCode -> "Register your wake-up code first, in Settings."
-                                draft.finishWithScan -> "Last round: walk to your wake-up code and scan it."
-                                else -> "Off. The morning ends after the puzzles."
-                            },
-                            style = ColdText.caption,
-                            color = sky.dim,
-                        )
-                        if (!hasWakeCode) {
-                            Text(
-                                "Open Settings",
-                                style = ColdText.bodyStrong.copy(fontSize = ColdText.caption.fontSize),
-                                color = sky.sunInk,
-                                modifier = Modifier
-                                    .springClick(0.92f, onClick = onOpenSettings)
-                                    .padding(top = 4.dp),
-                            )
-                        }
-                    }
-                    SpringToggle(draft.finishWithScan && hasWakeCode, { if (hasWakeCode) onScan(it) else onOpenSettings() }, "Finish with a scan")
-                }
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -284,6 +261,14 @@ private fun repeatPhrase(days: Int): String = when (days) {
     0b1111111 -> "every day"
     else -> "on " + DayOfWeek.entries.filter { Weekdays.has(days, it) }
         .joinToString(", ") { DAY_NAMES[it.value - 1].take(3) }
+}
+
+private fun methodLine(method: WakeMethod, hasCode: Boolean): String = when (method) {
+    WakeMethod.PUZZLES -> "Solve the puzzles to stop it."
+    WakeMethod.SCAN ->
+        if (hasCode) "No puzzles. Walk to your wake-up code and scan it." else "No puzzles: scan your wake-up code. You'll register it next."
+    WakeMethod.PUZZLES_AND_SCAN ->
+        if (hasCode) "The puzzles, then a last round: walk to your code and scan it." else "Puzzles, then a scan. You'll register your code next."
 }
 
 private fun difficultyLine(preset: Preset): String = when (preset) {

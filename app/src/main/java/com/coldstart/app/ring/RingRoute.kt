@@ -165,9 +165,17 @@ private fun RingScreen(
         }
         Text(session.label.ifBlank { "Alarm" }, style = ColdText.caption.copy(fontSize = 15.sp), color = Sun.OnGlass.copy(alpha = 0.75f))
         Spacer(Modifier.height(20.dp))
-        Pips(done = index, total = rounds.size)
-        Spacer(Modifier.height(10.dp))
-        Text("ROUND ${index + 1} OF ${rounds.size}", style = ColdText.label.copy(letterSpacing = 0.18.em), color = Sun.OnGlass.copy(alpha = 0.7f))
+        // A scan-only alarm is one step, not "round 1 of 1".
+        val scanOnly = rounds == listOf(RoundType.QR_SCAN)
+        if (!scanOnly) {
+            Pips(done = index, total = rounds.size)
+            Spacer(Modifier.height(10.dp))
+        }
+        Text(
+            if (scanOnly) "SCAN YOUR CODE TO STOP IT" else "ROUND ${index + 1} OF ${rounds.size}",
+            style = ColdText.label.copy(letterSpacing = 0.18.em),
+            color = Sun.OnGlass.copy(alpha = 0.7f),
+        )
 
         Box(
             Modifier

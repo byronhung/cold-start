@@ -60,7 +60,7 @@ data class SettingsUi(val wakeCode: String?, val alarmsUsingIt: Int)
 
 class SettingsViewModel(private val repository: AlarmRepository) : ViewModel() {
     val ui: StateFlow<SettingsUi?> = combine(repository.settings, repository.alarms) { settings, alarms ->
-        SettingsUi(settings?.wakeCode, alarms.count { it.finishWithScan })
+        SettingsUi(settings?.wakeCode, alarms.count { it.wakeMethod != 0 })
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun setCode(code: String?) {
@@ -100,7 +100,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onScan: () -> Unit, onBack: () 
                             Text(code, style = ColdText.header.copy(fontSize = 22.sp, letterSpacing = 0.04.em), color = sky.ink)
                             val n = ui?.alarmsUsingIt ?: 0
                             Text(
-                                if (n == 0) "Not used yet. Turn on “Finish with a scan” on an alarm."
+                                if (n == 0) "Not used yet. Pick Scan or Both under “How to wake up” on an alarm."
                                 else "Used by $n alarm" + if (n == 1) "" else "s",
                                 style = ColdText.caption,
                                 color = sky.dim,
@@ -126,7 +126,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onScan: () -> Unit, onBack: () 
                     SectionLabel("How it works")
                     Step(1, "Scan any barcode or QR code that lives away from your bed. Toothpaste, a cereal box, the kettle. Nothing to print.")
                     Step(2, "Cold Start saves the number under the bars. It never looks the product up.")
-                    Step(3, "Alarms with “Finish with a scan” end only when you walk there and scan it.")
+                    Step(3, "Alarms set to Scan or Both stop only when you walk there and scan it.")
                 }
             }
 

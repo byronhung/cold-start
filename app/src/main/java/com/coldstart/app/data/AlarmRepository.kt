@@ -7,6 +7,8 @@ import com.coldstart.app.puzzle.Difficulty
 import com.coldstart.app.puzzle.Levels
 import com.coldstart.app.puzzle.PastRound
 import com.coldstart.app.puzzle.Preset
+import com.coldstart.app.puzzle.WakeMethod
+import com.coldstart.app.puzzle.roundsFor
 import com.coldstart.app.puzzle.planMorning
 import com.coldstart.app.ring.RingSession
 import com.coldstart.app.ring.RoundResultDraft
@@ -87,12 +89,15 @@ class AlarmRepository(
         if (!isRering) scheduleNextAfterFiring(alarm, now)
 
         val wakeCode = wakeDao.settings()?.wakeCode
-        val scan = alarm.finishWithScan && wakeCode != null
         val puzzles = alarm.roundTypes.filter { it != RoundType.QR_SCAN }.ifEmpty { RoundType.MORNING_DEFAULT }
         val lastOpener = wakeDao.lastOpener()?.let { runCatching { RoundType.valueOf(it) }.getOrNull() }
         val preset = Preset.of(alarm.difficulty)
-        val rounds = planMorning(puzzles, lastOpener, Random.Default, rounds = preset.rounds) +
-            if (scan) listOf(RoundType.QR_SCAN) else emptyList()
+        val method = WakeMethod.of(alarm.wakeMethod)
+        val rounds = roundsFor(
+            method,
+            planMorning(puzzles, lastOpener, Random.Default, rounds = preset.rounds),
+            hasCode = wakeCode != null,
+        )
         val levels = puzzles.associateWith { preset.level(adaptive = levelFor(it)) }
 
         val wakeId = wakeDao.insertWake(
@@ -106,7 +111,7 @@ class AlarmRepository(
             label = alarm.label,
             rounds = rounds,
             levels = levels,
-            qrCode = if (scan) wakeCode else null,
+            qrCode = if (RoundType.QR_SCAN in rounds) wakeCode else null,
             wakeChecks = alarm.wakeChecks.coerceIn(0, WakeCheck.MAX),
             preset = preset,
         )

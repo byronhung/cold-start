@@ -10,6 +10,7 @@ import com.coldstart.app.alarm.Weekdays
 import com.coldstart.app.data.Alarm
 import com.coldstart.app.data.AlarmRepository
 import com.coldstart.app.puzzle.Preset
+import com.coldstart.app.puzzle.WakeMethod
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -23,7 +24,8 @@ data class EditDraft(
     val repeatDays: Int,
     val label: String,
     val wakeChecks: Int,
-    val finishWithScan: Boolean,
+    /** [WakeMethod.code]. */
+    val wakeMethod: Int,
     /** [Preset.code]. */
     val difficulty: Int,
     val isNew: Boolean,
@@ -39,7 +41,7 @@ class AlarmEditViewModel(
     var draft by mutableStateOf<EditDraft?>(null)
         private set
 
-    /** The shared wake-up code, so the scan toggle can say whether one is registered. */
+    /** The shared wake-up code, so picking a scan method knows whether to open the scanner first. */
     val wakeCode: StateFlow<String?> = repository.settings.map { it?.wakeCode }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
@@ -54,7 +56,7 @@ class AlarmEditViewModel(
                 val alarm = repository.get(alarmId)
                 original = alarm
                 draft = alarm?.let {
-                    EditDraft(it.hour, it.minute, it.repeatDays, it.label, it.wakeChecks, it.finishWithScan, it.difficulty, isNew = false)
+                    EditDraft(it.hour, it.minute, it.repeatDays, it.label, it.wakeChecks, it.wakeMethod, it.difficulty, isNew = false)
                 } ?: newDraft()
             }
         }
@@ -63,7 +65,7 @@ class AlarmEditViewModel(
     // New alarms get one wake check: enough to catch going back to sleep, rarely noticed when awake.
     private fun newDraft() = EditDraft(
         hour = 7, minute = 0, repeatDays = Weekdays.WEEKDAYS, label = "",
-        wakeChecks = 1, finishWithScan = false, difficulty = Preset.NORMAL.code, isNew = true,
+        wakeChecks = 1, wakeMethod = WakeMethod.PUZZLES.code, difficulty = Preset.NORMAL.code, isNew = true,
     )
 
     fun setTime(hour: Int, minute: Int) {
@@ -87,8 +89,24 @@ class AlarmEditViewModel(
         draft = draft?.copy(difficulty = preset.code)
     }
 
-    fun setFinishWithScan(on: Boolean) {
-        draft = draft?.copy(finishWithScan = on)
+    /** A scan method picked before any code exists: applied once the scanner returns one. */
+    private var pendingMethod: WakeMethod? = null
+
+    /** Returns true if the scanner must open first, because no wake-up code is registered yet. */
+    fun pickMethod(method: WakeMethod): Boolean {
+        if (method.usesScan && wakeCode.value == null) {
+            pendingMethod = method
+            return true
+        }
+        draft = draft?.copy(wakeMethod = method.code)
+        return false
+    }
+
+    /** The scanner came back with a code: save it as the shared code and apply the waiting method. */
+    fun codeScanned(code: String) {
+        viewModelScope.launch { repository.setWakeCode(code) }
+        pendingMethod?.let { m -> draft = draft?.copy(wakeMethod = m.code) }
+        pendingMethod = null
     }
 
     /** Saving always turns the alarm on: you just set it, so you want it. */
@@ -105,7 +123,7 @@ class AlarmEditViewModel(
                     repeatDays = d.repeatDays,
                     label = d.label.trim(),
                     wakeChecks = d.wakeChecks,
-                    finishWithScan = d.finishWithScan,
+                    wakeMethod = d.wakeMethod,
                     difficulty = d.difficulty,
                     enabled = true,
                 ),

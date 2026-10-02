@@ -32,6 +32,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coldstart.app.alarm.NextAlarm
 import com.coldstart.app.alarm.Weekdays
 import com.coldstart.app.puzzle.Preset
+import com.coldstart.app.puzzle.WakeMethod
 import com.coldstart.app.ui.components.Chip
 import com.coldstart.app.ui.components.GlassCard
 import com.coldstart.app.ui.components.IconSquareButton
@@ -215,8 +216,12 @@ private fun AlarmCard(row: AlarmRowUi, index: Int, onClick: () -> Unit, onToggle
                         color = sky.mute,
                     )
                     if (row.wakeChecks > 0) Chip(if (row.wakeChecks == 1) "1 check" else "${row.wakeChecks} checks", SunIcons.Check)
-                    if (row.scan) Chip("Scan", SunIcons.Scan)
-                    when (Preset.of(row.difficulty)) {
+                    when (WakeMethod.of(row.wakeMethod)) {
+                        WakeMethod.SCAN -> Chip("Scan only", SunIcons.Scan)
+                        WakeMethod.PUZZLES_AND_SCAN -> Chip("Scan", SunIcons.Scan)
+                        WakeMethod.PUZZLES -> Unit
+                    }
+                    if (WakeMethod.of(row.wakeMethod) != WakeMethod.SCAN) when (Preset.of(row.difficulty)) {
                         Preset.GENTLE -> Chip("Gentle")
                         Preset.HARD -> Chip("Hard")
                         Preset.NORMAL -> Unit
@@ -234,9 +239,9 @@ private fun AlarmListPreview() = ColdStartTheme {
     AlarmListContent(
         ui = AlarmListUi(
             rows = listOf(
-                AlarmRowUi(1, "6:30", "AM", Weekdays.WEEKDAYS, "Weekdays", true, 1, true),
-                AlarmRowUi(2, "8:15", "AM", Weekdays.WEEKEND, "Weekend", true, 0, false),
-                AlarmRowUi(3, "5:45", "AM", 0b1010, "Gym", false, 1, false),
+                AlarmRowUi(1, "6:30", "AM", Weekdays.WEEKDAYS, "Weekdays", true, 1, 2),
+                AlarmRowUi(2, "8:15", "AM", Weekdays.WEEKEND, "Weekend", true, 0, 1),
+                AlarmRowUi(3, "5:45", "AM", 0b1010, "Gym", false, 1, 0),
             ),
             next = NextAlarm("6:30", "AM", "tomorrow · in 8 h 30 m"),
             hour = 22,

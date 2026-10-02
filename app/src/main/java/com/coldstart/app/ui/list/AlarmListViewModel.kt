@@ -26,7 +26,8 @@ data class AlarmRowUi(
     val label: String,
     val enabled: Boolean,
     val wakeChecks: Int,
-    val scan: Boolean,
+    /** [com.coldstart.app.puzzle.WakeMethod.code]. */
+    val wakeMethod: Int,
     /** [com.coldstart.app.puzzle.Preset.code]. */
     val difficulty: Int = 1,
 )
@@ -66,7 +67,7 @@ class AlarmListViewModel(
                     label = it.label,
                     enabled = it.enabled,
                     wakeChecks = it.wakeChecks,
-                    scan = it.finishWithScan,
+                    wakeMethod = it.wakeMethod,
                     difficulty = it.difficulty,
                 )
             },

@@ -46,6 +46,35 @@ enum class Preset(val code: Int, val rounds: Int) {
     }
 }
 
+// ---------- how to wake up ----------
+
+/** Per alarm: what stops it. */
+enum class WakeMethod(val code: Int) {
+    PUZZLES(0),
+
+    /** Just walk to your code and scan it. */
+    SCAN(1),
+
+    /** The puzzles, then the scan as the last round. */
+    PUZZLES_AND_SCAN(2);
+
+    val usesScan: Boolean get() = this != PUZZLES
+
+    companion object {
+        fun of(code: Int): WakeMethod = entries.firstOrNull { it.code == code } ?: PUZZLES
+    }
+}
+
+/**
+ * The rounds for a morning. With no wake-up code registered, a scan method falls back to puzzles:
+ * removing the code in Settings must never leave an alarm that only the 30 s hold can stop.
+ */
+fun roundsFor(method: WakeMethod, puzzles: List<RoundType>, hasCode: Boolean): List<RoundType> = when {
+    !hasCode || method == WakeMethod.PUZZLES -> puzzles
+    method == WakeMethod.SCAN -> listOf(RoundType.QR_SCAN)
+    else -> puzzles + RoundType.QR_SCAN
+}
+
 // ---------- the morning ----------
 
 /** Five rounds: long enough that solving it is actually waking up (~60–90 s). */

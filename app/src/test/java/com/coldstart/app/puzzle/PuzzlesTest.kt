@@ -202,4 +202,28 @@ class PuzzlesTest {
     @Test fun `unknown preset codes fall back to normal`() {
         assertEquals(Preset.NORMAL, Preset.of(42))
     }
+
+    // ---------- how to wake up ----------
+
+    private val five = listOf(STROOP, PATTERN_FLASH, ODD_ONE_OUT, STROOP, PATTERN_FLASH)
+
+    @Test fun `puzzles only is just the puzzles`() {
+        assertEquals(five, roundsFor(WakeMethod.PUZZLES, five, hasCode = true))
+    }
+
+    @Test fun `scan only is one scan round`() {
+        assertEquals(listOf(RoundType.QR_SCAN), roundsFor(WakeMethod.SCAN, five, hasCode = true))
+    }
+
+    @Test fun `both ends the puzzles with a scan`() {
+        assertEquals(five + RoundType.QR_SCAN, roundsFor(WakeMethod.PUZZLES_AND_SCAN, five, hasCode = true))
+    }
+
+    @Test fun `no registered code falls back to puzzles, whatever the method`() {
+        for (m in WakeMethod.entries) assertEquals(five, roundsFor(m, five, hasCode = false))
+    }
+
+    @Test fun `unknown wake method codes fall back to puzzles`() {
+        assertEquals(WakeMethod.PUZZLES, WakeMethod.of(9))
+    }
 }
