@@ -15,6 +15,7 @@ import java.time.LocalDateTime
  *
  *   adb shell am broadcast -n com.coldstart.app/.DebugReceiver -a com.coldstart.app.debug.ADD --ei minutes 1
  *   adb shell am broadcast -n com.coldstart.app/.DebugReceiver -a com.coldstart.app.debug.STOP
+ *   adb shell am broadcast -n com.coldstart.app/.DebugReceiver -a com.coldstart.app.debug.SOLVE   (as if all rounds were solved: starts wake checks)
  *
  * ADD also takes --ei checks N (wake checks, default 0), --ei checkDelaySec S (seconds between
  * checks, instead of 5 minutes; lasts until the app process dies) and --ez scan true.
@@ -44,6 +45,10 @@ class DebugReceiver : BroadcastReceiver() {
                         )
                         Log.i(TAG, "Added test alarm $id at ${at.hour}:${at.minute}")
                     }
+                    ACTION_SOLVE -> {
+                        app.ringController.finish(WakeOutcome.SOLVED, emptyList())
+                        Log.i(TAG, "Solved ring")
+                    }
                     ACTION_STOP -> {
                         app.ringController.finish(WakeOutcome.GAVE_UP, emptyList())
                         Log.i(TAG, "Stopped ring")
@@ -59,5 +64,6 @@ class DebugReceiver : BroadcastReceiver() {
         const val TAG = "ColdStartDebug"
         const val ACTION_ADD = "com.coldstart.app.debug.ADD"
         const val ACTION_STOP = "com.coldstart.app.debug.STOP"
+        const val ACTION_SOLVE = "com.coldstart.app.debug.SOLVE"
     }
 }

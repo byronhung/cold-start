@@ -87,6 +87,9 @@ object Notifications {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            // Android 12+ holds back a foreground service's notification for up to 10 s unless
+            // asked not to. For an alarm that delay is the bug: show it now.
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setFullScreenIntent(open, true)
             .setContentIntent(open)
             .build()
