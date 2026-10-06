@@ -352,7 +352,7 @@ private fun methodLine(method: WakeMethod, hasCode: Boolean): String = when (met
 private fun difficultyLine(preset: Preset): String = when (preset) {
     Preset.GENTLE -> "3 rounds of the easiest puzzles. For mornings you wake up fine."
     Preset.NORMAL -> "5 rounds. Starts hard and eases off if you've been slow lately."
-    Preset.HARD -> "7 rounds at the hardest level, every time."
+    Preset.HARD -> "4 rounds at the hardest level, every time."
 }
 
 private fun checksLine(n: Int): String = when (n) {

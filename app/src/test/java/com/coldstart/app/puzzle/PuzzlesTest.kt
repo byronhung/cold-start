@@ -183,7 +183,7 @@ class PuzzlesTest {
     // ---------- presets ----------
 
     @Test fun `presets set the rounds`() {
-        assertEquals(listOf(3, 5, 7), Preset.entries.map { it.rounds })
+        assertEquals(listOf(3, 5, 4), Preset.entries.map { it.rounds })
     }
 
     @Test fun `gentle is always easiest, hard always hardest, normal follows adaptive`() {

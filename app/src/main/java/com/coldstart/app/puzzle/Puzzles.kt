@@ -29,8 +29,8 @@ enum class Preset(val code: Int, val rounds: Int) {
     /** 5 rounds, starts at the top level and eases down if mornings are slow. */
     NORMAL(1, 5),
 
-    /** 7 rounds, top level, never eases down. */
-    HARD(2, 7);
+    /** 4 rounds, top level, never eases down: fewer reps, because each one is a real puzzle. */
+    HARD(2, 4);
 
     /** This preset's level for a puzzle type, given what adaptive difficulty would choose. */
     fun level(adaptive: Int): Int = when (this) {
