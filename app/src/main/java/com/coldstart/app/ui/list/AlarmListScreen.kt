@@ -4,6 +4,8 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -153,6 +155,7 @@ private fun NextClock(next: NextAlarm) {
 private val DAY_LETTERS = listOf("M", "T", "W", "T", "F", "S", "S")
 
 /** Glass card: rises in on first show, staggered; fades when switched off. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AlarmCard(row: AlarmRowUi, index: Int, onClick: () -> Unit, onToggle: (Boolean) -> Unit) {
     val sky = LocalSky.current
@@ -198,7 +201,12 @@ private fun AlarmCard(row: AlarmRowUi, index: Int, onClick: () -> Unit, onToggle
                         )
                     }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Days and tags flow: when an alarm has several tags they drop to a second line
+                // instead of squeezing a tag until its text breaks.
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
                     Text(
                         buildAnnotatedString {
                             if (row.repeatDays == Weekdays.NONE) {
@@ -214,6 +222,7 @@ private fun AlarmCard(row: AlarmRowUi, index: Int, onClick: () -> Unit, onToggle
                         },
                         style = ColdText.day,
                         color = sky.mute,
+                        modifier = Modifier.align(Alignment.CenterVertically),
                     )
                     if (row.wakeChecks > 0) Chip(if (row.wakeChecks == 1) "1 check" else "${row.wakeChecks} checks", SunIcons.Check)
                     when (WakeMethod.of(row.wakeMethod)) {

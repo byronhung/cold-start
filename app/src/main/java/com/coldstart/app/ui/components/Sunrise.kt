@@ -292,7 +292,8 @@ fun Chip(text: String, icon: ImageVector? = null) {
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
         if (icon != null) Icon(icon, contentDescription = null, tint = sky.ink, modifier = Modifier.size(11.dp))
-        Text(text, style = ColdText.chip, color = sky.ink)
+        // A tag never breaks inside itself; the row around it wraps instead.
+        Text(text, style = ColdText.chip, color = sky.ink, maxLines = 1, softWrap = false)
     }
 }
 
