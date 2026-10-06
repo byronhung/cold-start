@@ -44,7 +44,12 @@ enum class RoundType {
     STROOP,
     PATTERN_FLASH,
     ODD_ONE_OUT,
-    QR_SCAN;
+    QR_SCAN,
+
+    // Puzzle pack 1 (Plus).
+    PAIRS,
+    PATH,
+    SLIDE;
 
     companion object {
         val MORNING_DEFAULT = listOf(STROOP, PATTERN_FLASH, ODD_ONE_OUT)

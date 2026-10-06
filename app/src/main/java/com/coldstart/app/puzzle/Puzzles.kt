@@ -61,9 +61,9 @@ val PUZZLE_CATALOG = listOf(
     CatalogPuzzle("Stroop", RoundType.STROOP, plus = false),
     CatalogPuzzle("Pattern", RoundType.PATTERN_FLASH, plus = false),
     CatalogPuzzle("Odd one out", RoundType.ODD_ONE_OUT, plus = false),
-    CatalogPuzzle("Pairs", null, plus = true),
-    CatalogPuzzle("Path", null, plus = true),
-    CatalogPuzzle("Slide out", null, plus = true),
+    CatalogPuzzle("Pairs", RoundType.PAIRS, plus = true),
+    CatalogPuzzle("Path", RoundType.PATH, plus = true),
+    CatalogPuzzle("Slide out", RoundType.SLIDE, plus = true),
 )
 
 fun parseMix(saved: String?): List<RoundType> =
@@ -250,6 +250,9 @@ object Difficulty {
         RoundType.STROOP -> 5_000L to 15_000L
         RoundType.PATTERN_FLASH -> 6_000L to 16_000L
         RoundType.ODD_ONE_OUT -> 5_000L to 15_000L
+        RoundType.PAIRS -> 10_000L to 30_000L
+        RoundType.PATH -> 8_000L to 25_000L
+        RoundType.SLIDE -> 8_000L to 30_000L
         RoundType.QR_SCAN -> Long.MAX_VALUE to Long.MAX_VALUE
     }
 

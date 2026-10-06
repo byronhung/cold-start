@@ -57,7 +57,10 @@ import com.coldstart.app.data.WakeOutcome
 import com.coldstart.app.puzzle.Levels
 import com.coldstart.app.puzzle.OddOneOutPuzzle
 import com.coldstart.app.puzzle.PatternPuzzle
+import com.coldstart.app.puzzle.PairsPuzzle
+import com.coldstart.app.puzzle.PathPuzzle
 import com.coldstart.app.puzzle.QrPuzzle
+import com.coldstart.app.puzzle.SlidePuzzle
 import com.coldstart.app.puzzle.StroopPuzzle
 import com.coldstart.app.ui.components.HoldToGiveUp
 import com.coldstart.app.ui.components.Pips
@@ -201,6 +204,9 @@ private fun RingScreen(
                         RoundType.PATTERN_FLASH -> PatternPuzzle(level, onMiss, ::roundSolved)
                         RoundType.ODD_ONE_OUT -> OddOneOutPuzzle(level, onMiss, ::roundSolved)
                         RoundType.QR_SCAN -> QrPuzzle(session.qrCode.orEmpty(), onMiss, ::roundSolved)
+                        RoundType.PAIRS -> PairsPuzzle(level, ::roundSolved)
+                        RoundType.PATH -> PathPuzzle(level, ::roundSolved)
+                        RoundType.SLIDE -> SlidePuzzle(level, ::roundSolved)
                     }
                 }
             }
