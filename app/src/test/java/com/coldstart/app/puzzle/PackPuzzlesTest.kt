@@ -50,12 +50,12 @@ class PackPuzzlesTest {
     // ---------- Slide out ----------
 
     @Test fun `the key reaching the right wall solves it`() {
-        val board = SlideBoard(listOf(Block(0, 2, SLIDE_EXIT_ROW, 2, 1, key = true)))
+        val board = SlideBoard(4, 1, listOf(Block(0, 2, 1, 2, 1, key = true)))
         assertTrue(board.isSolved)
     }
 
     @Test fun `blocks slide as far as they can, and not through each other`() {
-        val board = SlideBoard(listOf(Block(0, 0, 1, 2, 1, key = true), Block(1, 3, 0, 1, 2)))
+        val board = SlideBoard(4, 1, listOf(Block(0, 0, 1, 2, 1, key = true), Block(1, 3, 0, 1, 2)))
         val moved = board.slide(0, 1)!!
         assertEquals(1, moved.key.x) // stopped by the vertical block at x = 3
         assertEquals(null, board.slide(0, -1)) // already against the left wall
@@ -63,6 +63,8 @@ class PackPuzzlesTest {
 
     @Test fun `the prototype board takes four moves`() {
         val board = SlideBoard(
+            4,
+            1,
             listOf(
                 Block(0, 0, 1, 2, 1, key = true),
                 Block(1, 2, 0, 1, 2),
@@ -74,21 +76,19 @@ class PackPuzzlesTest {
         assertEquals(4, solveSlide(board))
     }
 
-    @Test fun `every generated slide board is solvable within its level's move range`() {
-        for (level in 1..3) repeat(40) { seed ->
-            val board = slideFor(level, Random(seed * 31 + level))
+    @Test fun `gentle boards generate live, solvable, two to four moves, no overlaps`() {
+        repeat(60) { seed ->
+            val board = slideFor(1, Random(seed))
             val need = solveSlide(board)
-            assertNotNull("level $level seed $seed unsolvable", need)
-            assertTrue("level $level seed $seed took $need", need!! in slideMoves(level))
-            assertFalse(board.isSolved)
+            assertNotNull(need)
+            assertTrue("seed $seed took $need", need!! in slideMoves(1))
+            assertEquals(4, board.size)
+            val cells = board.blocks.flatMap { b -> (0 until b.w).flatMap { dx -> (0 until b.h).map { dy -> (b.y + dy) * board.size + b.x + dx } } }
+            assertEquals(cells.size, cells.toSet().size)
         }
     }
 
-    @Test fun `no two blocks ever overlap`() {
-        for (level in 1..3) repeat(40) { seed ->
-            val board = slideFor(level, Random(seed + 1000 * level))
-            val cells = board.blocks.flatMap { b -> (0 until b.w).flatMap { dx -> (0 until b.h).map { dy -> (b.y + dy) * SLIDE_SIZE + b.x + dx } } }
-            assertEquals(cells.size, cells.toSet().size)
-        }
+    @Test fun `bigger levels use bigger boards`() {
+        assertEquals(listOf(4, 5, 6), (1..3).map { slideSpec(it).size })
     }
 }

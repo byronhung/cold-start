@@ -2,6 +2,7 @@ package com.coldstart.app
 
 import android.app.Application
 import com.coldstart.app.alarm.AlarmScheduler
+import com.coldstart.app.alarm.PendingCheckStore
 import com.coldstart.app.data.AlarmRepository
 import com.coldstart.app.data.ColdStartDatabase
 import com.coldstart.app.ring.Notifications
@@ -20,7 +21,7 @@ class ColdStartApp : Application() {
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     val scheduler: AlarmScheduler by lazy { AlarmScheduler(this) }
-    val repository: AlarmRepository by lazy { AlarmRepository(ColdStartDatabase.build(this), scheduler) }
+    val repository: AlarmRepository by lazy { AlarmRepository(ColdStartDatabase.build(this), scheduler, PendingCheckStore(this)) }
     val ringController: RingController by lazy { RingController(repository, appScope) }
 
     override fun onCreate() {

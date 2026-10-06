@@ -41,7 +41,8 @@ class WakeCheckReceiver : BroadcastReceiver() {
     private suspend fun onCheck(context: Context, app: ColdStartApp, check: WakeCheck) {
         val power = context.getSystemService(PowerManager::class.java)
         val keyguard = context.getSystemService(KeyguardManager::class.java)
-        when (decideCheck(app.ringController.isActive, power.isInteractive, keyguard.isKeyguardLocked)) {
+        val current = app.repository.isPendingCheck(check)
+        when (decideCheck(app.ringController.isActive, power.isInteractive, keyguard.isKeyguardLocked, current)) {
             CheckAction.SKIP -> Unit
             CheckAction.PASS_SILENTLY -> app.repository.checkPassed(check)
             CheckAction.ASK -> {
@@ -61,6 +62,8 @@ class WakeCheckReceiver : BroadcastReceiver() {
     }
 
     private suspend fun onDeadline(context: Context, app: ColdStartApp, check: WakeCheck) {
+        // Replaced or cancelled since it was asked: nothing to ring.
+        if (!app.repository.isPendingCheck(check)) return
         Notifications.cancelWakeCheck(context)
         app.repository.checkMissed(check)
         ContextCompat.startForegroundService(context, RingService.startIntent(context, check.alarmId, isRering = true))

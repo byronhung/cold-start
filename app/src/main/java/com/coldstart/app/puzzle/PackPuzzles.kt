@@ -136,18 +136,19 @@ private fun randomRoute(n: Int, rng: Random): List<Pair<Int, Int>> {
 
 // ---------- Slide out ----------
 
-/** A block on the 4×4 board. Long blocks slide only along their length; the key is horizontal. */
+/** A block on the board. Blocks slide only along their length; the key is horizontal. */
 data class Block(val id: Int, val x: Int, val y: Int, val w: Int, val h: Int, val key: Boolean = false) {
     val horizontal: Boolean get() = key || w > h
 }
 
-const val SLIDE_SIZE = 4
-const val SLIDE_EXIT_ROW = 1
-
-data class SlideBoard(val blocks: List<Block>) {
+/**
+ * [size]×[size] board. The key leaves through a gap on the right edge of [exitRow].
+ * Bigger boards are where sliding puzzles get hard: Rush Hour's 6×6 is the classic.
+ */
+data class SlideBoard(val size: Int, val exitRow: Int, val blocks: List<Block>) {
     val key: Block get() = blocks.first { it.key }
 
-    val isSolved: Boolean get() = key.x + key.w == SLIDE_SIZE && key.y == SLIDE_EXIT_ROW
+    val isSolved: Boolean get() = key.x + key.w == size && key.y == exitRow
 
     /**
      * The one move the app allows: slide a block as far as it goes in direction [dir] (-1 or +1)
@@ -157,22 +158,22 @@ data class SlideBoard(val blocks: List<Block>) {
         val b = blocks.first { it.id == id }
         val taken = HashSet<Int>()
         blocks.filter { it.id != id }.forEach { o ->
-            for (dx in 0 until o.w) for (dy in 0 until o.h) taken += (o.y + dy) * SLIDE_SIZE + o.x + dx
+            for (dx in 0 until o.w) for (dy in 0 until o.h) taken += (o.y + dy) * size + o.x + dx
         }
         var x = b.x
         var y = b.y
         while (true) {
             val nx = if (b.horizontal) x + dir else x
             val ny = if (b.horizontal) y else y + dir
-            if (nx < 0 || ny < 0 || nx + b.w > SLIDE_SIZE || ny + b.h > SLIDE_SIZE) break
+            if (nx < 0 || ny < 0 || nx + b.w > size || ny + b.h > size) break
             var clear = true
-            for (dx in 0 until b.w) for (dy in 0 until b.h) if ((ny + dy) * SLIDE_SIZE + nx + dx in taken) clear = false
+            for (dx in 0 until b.w) for (dy in 0 until b.h) if ((ny + dy) * size + nx + dx in taken) clear = false
             if (!clear) break
             x = nx
             y = ny
         }
         if (x == b.x && y == b.y) return null
-        return SlideBoard(blocks.map { if (it.id == id) it.copy(x = x, y = y) else it })
+        return copy(blocks = blocks.map { if (it.id == id) it.copy(x = x, y = y) else it })
     }
 
     fun moves(): List<SlideBoard> = blocks.flatMap { b -> listOf(-1, 1).mapNotNull { slide(b.id, it) } }
@@ -183,9 +184,9 @@ data class SlideBoard(val blocks: List<Block>) {
 
 /**
  * Fewest moves to solve, using exactly the app's slide-as-far-as-it-goes rule, or null if it can't
- * be solved. The boards are tiny, so a full search is instant.
+ * be solved. Used by the tests to check every generated board independently.
  */
-fun solveSlide(start: SlideBoard, limit: Int = 30): Int? {
+fun solveSlide(start: SlideBoard, limit: Int = 40): Int? {
     if (start.isSolved) return 0
     val seen = hashSetOf(start.signature())
     var frontier = listOf(start)
@@ -201,36 +202,57 @@ fun solveSlide(start: SlideBoard, limit: Int = 30): Int? {
     return null
 }
 
-/** Fewest moves a board should take: 2–3, 3–5, 5–8 at levels 1–3. */
-fun slideMoves(level: Int): IntRange = when (level.coerceIn(Levels.MIN, Levels.MAX)) {
-    1 -> 2..3
-    2 -> 3..5
-    else -> 5..8
-}
+/** What each level asks for: board size, exit row, fewest moves, and how many blocks to place. */
+data class SlideSpec(val size: Int, val exitRow: Int, val moves: IntRange, val blocks: IntRange)
 
 /**
- * Places blocks around a solved key, maps every position reachable from that layout, and works
- * out exactly how many moves each one needs (a reverse search from the solved positions). Then
- * picks one whose count is in this level's range. Exact, not luck: every returned board has a
- * known shortest solution, so none can be a dead end.
+ * Gentle 4×4 (2–4 moves) · Normal 5×5 (4–7) · Hard 6×6, Rush Hour's size (7–12).
+ * v0.2's 4×4 at 5–8 moves was too easy at the top (Byron, 6 Oct).
  */
-fun slideFor(level: Int, rng: Random): SlideBoard {
-    val range = slideMoves(level)
-    repeat(3_000) {
-        val solved = solvedLayout(rng, level) ?: return@repeat
-        val fits = slideDistances(solved).filterValues { it in range }.keys
+fun slideSpec(level: Int): SlideSpec = when (level.coerceIn(Levels.MIN, Levels.MAX)) {
+    1 -> SlideSpec(size = 4, exitRow = 1, moves = 2..4, blocks = 3..4)
+    2 -> SlideSpec(size = 5, exitRow = 2, moves = 4..7, blocks = 5..7)
+    else -> SlideSpec(size = 6, exitRow = 2, moves = 7..12, blocks = 8..11)
+}
+
+fun slideMoves(level: Int): IntRange = slideSpec(level).moves
+
+/**
+ * A board for this level. Normal and Hard come from the bundled bank (see [SlideBank]) when one is
+ * given: those boards are slow to find on a phone, so they're found once, on a PC, and checked by
+ * a test. Gentle, or no bank, generates live with [generateSlide].
+ */
+fun slideFor(level: Int, rng: Random, bank: List<String> = emptyList()): SlideBoard =
+    if (level >= 2 && bank.isNotEmpty()) SlideBank.pick(bank, rng) else generateSlide(level, rng)
+
+/**
+ * Places blocks around a solved key, maps every position reachable from that layout and works
+ * out exactly how many moves each one needs (a reverse search from the solved positions), then
+ * picks one whose count is in this level's range. Exact, not luck. If a level's range is never
+ * hit, the hardest board seen below the range is used, never a trivial one.
+ */
+fun generateSlide(level: Int, rng: Random, attempts: Int = 400): SlideBoard {
+    val spec = slideSpec(level)
+    var best: Pair<SlideBoard, Int>? = null
+    repeat(attempts) {
+        val solved = solvedLayout(rng, spec) ?: return@repeat
+        val dist = slideDistances(solved)
+        val fits = dist.filterValues { it in spec.moves }.keys
         if (fits.isNotEmpty()) return fits.random(rng)
+        dist.filterValues { it in 1 until spec.moves.first }.maxByOrNull { it.value }?.let { (b, d) ->
+            if (best == null || d > best!!.second) best = b to d
+        }
     }
-    return fallbackSlide()
+    return best?.first ?: fallbackSlide()
 }
 
 /** Every board reachable from [start], mapped to its fewest moves to solved (unsolvable ones left out). */
-internal fun slideDistances(start: SlideBoard): Map<SlideBoard, Int> {
+internal fun slideDistances(start: SlideBoard, cap: Int = 60_000): Map<SlideBoard, Int> {
     val boards = HashMap<String, SlideBoard>()
     val cameFrom = HashMap<String, MutableList<String>>()
     val queue = ArrayDeque(listOf(start))
     boards[start.signature()] = start
-    while (queue.isNotEmpty() && boards.size < 20_000) {
+    while (queue.isNotEmpty() && boards.size < cap) {
         val b = queue.removeFirst()
         val from = b.signature()
         for (m in b.moves()) {
@@ -256,31 +278,38 @@ internal fun slideDistances(start: SlideBoard): Map<SlideBoard, Int> {
     return dist.mapKeys { (sig, _) -> boards.getValue(sig) }
 }
 
-/** A solved board: key at the exit, more blocks at higher levels (3–4, 4–5, 5–6). */
-private fun solvedLayout(rng: Random, level: Int): SlideBoard? {
-    val blocks = mutableListOf(Block(0, SLIDE_SIZE - 2, SLIDE_EXIT_ROW, 2, 1, key = true))
-    val taken = HashSet<Int>().apply { add(SLIDE_EXIT_ROW * SLIDE_SIZE + 2); add(SLIDE_EXIT_ROW * SLIDE_SIZE + 3) }
-    val count = level.coerceIn(Levels.MIN, Levels.MAX) + 2 + rng.nextInt(2)
+/**
+ * A solved board: the key at the exit and blocks placed around it. On 5×5 and up some blocks are
+ * three long (Rush Hour's trucks), which is what makes the deeper puzzles possible.
+ */
+private fun solvedLayout(rng: Random, spec: SlideSpec): SlideBoard? {
+    val n = spec.size
+    val blocks = mutableListOf(Block(0, n - 2, spec.exitRow, 2, 1, key = true))
+    val taken = HashSet<Int>().apply { add(spec.exitRow * n + n - 2); add(spec.exitRow * n + n - 1) }
+    val target = spec.blocks.first + rng.nextInt(spec.blocks.last - spec.blocks.first + 1)
     var id = 1
-    repeat(80) {
-        if (blocks.size > count) return@repeat
+    repeat(300) {
+        if (blocks.size > target) return@repeat
         val vertical = rng.nextBoolean()
-        val w = if (vertical) 1 else 2
-        val h = if (vertical) 2 else 1
-        val x = rng.nextInt(SLIDE_SIZE - w + 1)
-        val y = rng.nextInt(SLIDE_SIZE - h + 1)
+        val length = if (n >= 5 && rng.nextInt(4) == 0) 3 else 2
+        val w = if (vertical) 1 else length
+        val h = if (vertical) length else 1
+        val x = rng.nextInt(n - w + 1)
+        val y = rng.nextInt(n - h + 1)
         // A horizontal block in the key's row could only ever sit in its way: keep that row clear.
-        if (!vertical && y == SLIDE_EXIT_ROW) return@repeat
-        val cells = (0 until w).flatMap { dx -> (0 until h).map { dy -> (y + dy) * SLIDE_SIZE + x + dx } }
+        if (!vertical && y == spec.exitRow) return@repeat
+        val cells = (0 until w).flatMap { dx -> (0 until h).map { dy -> (y + dy) * n + x + dx } }
         if (cells.any { it in taken }) return@repeat
         taken += cells
         blocks += Block(id++, x, y, w, h)
     }
-    return if (blocks.size > count) SlideBoard(blocks) else null
+    return if (blocks.size > spec.blocks.first) SlideBoard(n, spec.exitRow, blocks) else null
 }
 
-/** The prototype's first board (4 moves). Only used if random generation somehow fails. */
+/** The prototype's first board (4×4, 4 moves). Only used if generation somehow finds nothing. */
 private fun fallbackSlide() = SlideBoard(
+    4,
+    1,
     listOf(
         Block(0, 0, 1, 2, 1, key = true),
         Block(1, 2, 0, 1, 2),
@@ -289,3 +318,36 @@ private fun fallbackSlide() = SlideBoard(
         Block(4, 0, 3, 2, 1),
     ),
 )
+
+// ---------- the bank ----------
+
+/**
+ * Pre-made Normal and Hard boards, one per line in assets/slide_bank_<level>.txt. Line format:
+ * `size;exitRow;id,x,y,w,h,k|id,x,y,w,h,k|…` (k = 1 for the key). Picking one is instant, and a
+ * random vertical flip doubles the variety without changing how many moves it takes.
+ */
+object SlideBank {
+    fun encode(b: SlideBoard): String =
+        "${b.size};${b.exitRow};" + b.blocks.joinToString("|") { "${it.id},${it.x},${it.y},${it.w},${it.h},${if (it.key) 1 else 0}" }
+
+    fun decode(line: String): SlideBoard {
+        val (size, exit, body) = line.trim().split(";")
+        val blocks = body.split("|").map { part ->
+            val f = part.split(",").map(String::toInt)
+            Block(f[0], f[1], f[2], f[3], f[4], key = f[5] == 1)
+        }
+        return SlideBoard(size.toInt(), exit.toInt(), blocks)
+    }
+
+    /** Upside down: rows reversed, exit row with them. Same puzzle, same number of moves. */
+    fun flip(b: SlideBoard): SlideBoard = SlideBoard(
+        b.size,
+        b.size - 1 - b.exitRow,
+        b.blocks.map { it.copy(y = b.size - it.y - it.h) },
+    )
+
+    fun pick(lines: List<String>, rng: Random): SlideBoard {
+        val board = decode(lines.random(rng))
+        return if (rng.nextBoolean()) flip(board) else board
+    }
+}

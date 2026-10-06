@@ -41,4 +41,15 @@ class WakeChecksTest {
     @Test fun `nothing is checked while an alarm is ringing`() {
         assertEquals(CheckAction.SKIP, decideCheck(alarmRinging = true, screenOn = true, locked = false))
     }
+
+    @Test fun `a replaced or cancelled check does nothing`() {
+        assertEquals(CheckAction.SKIP, decideCheck(alarmRinging = false, screenOn = false, locked = true, isCurrent = false))
+        assertEquals(CheckAction.SKIP, decideCheck(alarmRinging = false, screenOn = true, locked = false, isCurrent = false))
+    }
+
+    @Test fun `checks for different mornings are different checks`() {
+        val first = WakeCheck.first(alarmId = 1, wakeId = 40, total = 1)
+        val second = WakeCheck.first(alarmId = 2, wakeId = 42, total = 1)
+        assertTrue(first != second)
+    }
 }

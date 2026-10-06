@@ -43,6 +43,11 @@ class AlarmScheduler(private val context: Context) {
     fun scheduleCheckDeadline(check: WakeCheck, at: Long) =
         setClock(at, checkIntent(check, WakeCheckReceiver.ACTION_DEADLINE))
 
+    fun cancelWakeCheck(check: WakeCheck) {
+        alarmManager.cancel(checkIntent(check, WakeCheckReceiver.ACTION_CHECK))
+        alarmManager.cancel(checkIntent(check, WakeCheckReceiver.ACTION_DEADLINE))
+    }
+
     fun cancelCheckDeadline(check: WakeCheck) {
         alarmManager.cancel(checkIntent(check, WakeCheckReceiver.ACTION_DEADLINE))
     }

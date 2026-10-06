@@ -31,6 +31,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -54,7 +55,15 @@ fun SlidePuzzle(level: Int, onSolved: () -> Unit) {
     val rng = remember { Random(System.nanoTime()) }
     // Built off the main thread: a hard board can take a moment to find, and the screen must not stall.
     var board by remember(level) { mutableStateOf<SlideBoard?>(null) }
-    LaunchedEffect(level) { board = withContext(Dispatchers.Default) { slideFor(level, rng) } }
+    val context = LocalContext.current
+    LaunchedEffect(level) {
+        board = withContext(Dispatchers.Default) {
+            val bank = runCatching {
+                context.assets.open("slide_bank_$level.txt").bufferedReader().readLines().filter { it.isNotBlank() }
+            }.getOrDefault(emptyList())
+            slideFor(level, rng, bank)
+        }
+    }
     var finished by remember { mutableStateOf(false) }
     var moves by remember { mutableIntStateOf(0) }
 
@@ -74,7 +83,9 @@ fun SlidePuzzle(level: Int, onSolved: () -> Unit) {
         PuzzlePrompt("Tap a block toward where it should go. Get the amber block out.")
         BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             val boardSide = minOf(maxWidth - 24.dp, 300.dp)
-            val cell = boardSide / SLIDE_SIZE
+            val n = board?.size ?: 4
+            val exitRow = board?.exitRow ?: 1
+            val cell = boardSide / n
             Box(
                 Modifier
                     .size(boardSide)
@@ -99,7 +110,7 @@ fun SlidePuzzle(level: Int, onSolved: () -> Unit) {
             Box(
                 Modifier
                     .align(Alignment.Center)
-                    .offset(x = boardSide / 2 + 2.dp, y = -boardSide / 2 + cell * SLIDE_EXIT_ROW + cell / 2)
+                    .offset(x = boardSide / 2 + 2.dp, y = -boardSide / 2 + cell * exitRow + cell / 2)
                     .size(width = 8.dp, height = cell - 12.dp)
                     .shadow(12.dp, RoundedCornerShape(4.dp), ambientColor = Sun.AmberLight, spotColor = Sun.AmberLight)
                     .background(Sun.Glow, RoundedCornerShape(4.dp)),

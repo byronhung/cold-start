@@ -48,7 +48,12 @@ enum class CheckAction {
     SKIP,
 }
 
-fun decideCheck(alarmRinging: Boolean, screenOn: Boolean, locked: Boolean): CheckAction = when {
+/**
+ * [isCurrent]: this check is the one pending check. A check that was replaced (another alarm was
+ * solved since) or cancelled (an alarm started ringing) is stale, and stale checks do nothing.
+ */
+fun decideCheck(alarmRinging: Boolean, screenOn: Boolean, locked: Boolean, isCurrent: Boolean = true): CheckAction = when {
+    !isCurrent -> CheckAction.SKIP
     alarmRinging -> CheckAction.SKIP
     screenOn && !locked -> CheckAction.PASS_SILENTLY
     else -> CheckAction.ASK

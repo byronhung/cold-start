@@ -1,6 +1,7 @@
 package com.coldstart.app.data
 
 import com.coldstart.app.alarm.AlarmScheduler
+import com.coldstart.app.alarm.PendingCheckStore
 import com.coldstart.app.alarm.WakeCheck
 import com.coldstart.app.alarm.Weekdays
 import com.coldstart.app.puzzle.Difficulty
@@ -32,6 +33,7 @@ import kotlin.random.Random
 class AlarmRepository(
     private val database: ColdStartDatabase,
     private val scheduler: AlarmScheduler,
+    private val pendingCheck: PendingCheckStore,
 ) {
     private val alarmDao = database.alarmDao()
     private val wakeDao = database.wakeDao()
@@ -100,6 +102,8 @@ class AlarmRepository(
             return@withLock null
         }
         if (!isRering) scheduleNextAfterFiring(alarm, now)
+        // A ring takes over from any waiting wake check: this morning's solve sets a fresh one.
+        cancelPendingCheck()
 
         val settings = wakeDao.settings() ?: AppSettings()
         val wakeCode = settings.wakeCode
@@ -163,19 +167,41 @@ class AlarmRepository(
             )
         }
         if (outcome == WakeOutcome.SOLVED) {
-            WakeCheck.first(session.alarmId, wakeId, session.wakeChecks)?.let { scheduler.scheduleWakeCheck(it) }
+            WakeCheck.first(session.alarmId, wakeId, session.wakeChecks)?.let { scheduleCheck(it) }
         }
     }
 
     /** Answered in time, or passed silently because the phone was in use. Sets up the next one. */
     suspend fun checkPassed(check: WakeCheck) {
+        // An old check answered late must not overwrite the one that's actually waiting.
+        if (!isPendingCheck(check)) return
         scheduler.cancelCheckDeadline(check)
         wakeDao.checkPassed(check.wakeId)
-        check.next()?.let { scheduler.scheduleWakeCheck(it) }
+        val next = check.next()
+        if (next != null) scheduleCheck(next) else pendingCheck.clear()
     }
 
     /** Missed: the caller rings the alarm again, and that morning gets its own checks if solved. */
+    /** Whether [check] is the one waiting check; anything else is stale and must do nothing. */
+    fun isPendingCheck(check: WakeCheck): Boolean = pendingCheck.get() == check
+
+    /**
+     * One wake check at a time: setting one cancels whatever was waiting. Two alarms at 12:40 and
+     * 12:42 give one check, after the 12:42 solve, not one after each.
+     */
+    private fun scheduleCheck(check: WakeCheck) {
+        cancelPendingCheck()
+        pendingCheck.set(check)
+        scheduler.scheduleWakeCheck(check)
+    }
+
+    private fun cancelPendingCheck() {
+        pendingCheck.get()?.let { scheduler.cancelWakeCheck(it) }
+        pendingCheck.clear()
+    }
+
     suspend fun checkMissed(check: WakeCheck) {
+        pendingCheck.clear()
         wakeDao.checkMissed(check.wakeId)
     }
 
