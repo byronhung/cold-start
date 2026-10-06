@@ -7,6 +7,10 @@ import com.coldstart.app.puzzle.Difficulty
 import com.coldstart.app.puzzle.Levels
 import com.coldstart.app.puzzle.PastRound
 import com.coldstart.app.puzzle.Preset
+import com.coldstart.app.puzzle.effectiveMix
+import com.coldstart.app.puzzle.effectivePreset
+import com.coldstart.app.puzzle.encodeMix
+import com.coldstart.app.puzzle.parseMix
 import com.coldstart.app.puzzle.WakeMethod
 import com.coldstart.app.puzzle.roundsFor
 import com.coldstart.app.puzzle.planMorning
@@ -37,8 +41,17 @@ class AlarmRepository(
     val recentWakes: Flow<List<WakeLog>> = wakeDao.observeRecent(60)
     val settings: Flow<AppSettings?> = wakeDao.observeSettings()
 
-    suspend fun setWakeCode(code: String?) {
-        wakeDao.saveSettings((wakeDao.settings() ?: AppSettings()).copy(wakeCode = code?.trim()?.ifEmpty { null }))
+    suspend fun setWakeCode(code: String?) = editSettings { it.copy(wakeCode = code?.trim()?.ifEmpty { null }) }
+
+    suspend fun setPuzzleMix(mix: List<RoundType>) = editSettings { it.copy(puzzleMix = encodeMix(mix)) }
+
+    suspend fun setDefaultDifficulty(preset: Preset) = editSettings { it.copy(defaultDifficulty = preset.code) }
+
+    /** Until Google Play Billing exists (chunk P11), only the debug switch in Settings calls this. */
+    suspend fun setPlus(on: Boolean) = editSettings { it.copy(isPlus = on) }
+
+    private suspend fun editSettings(change: (AppSettings) -> AppSettings) = mutex.withLock {
+        wakeDao.saveSettings(change(wakeDao.settings() ?: AppSettings()))
     }
 
     suspend fun get(id: Long): Alarm? = alarmDao.get(id)
@@ -88,10 +101,12 @@ class AlarmRepository(
         }
         if (!isRering) scheduleNextAfterFiring(alarm, now)
 
-        val wakeCode = wakeDao.settings()?.wakeCode
-        val puzzles = alarm.roundTypes.filter { it != RoundType.QR_SCAN }.ifEmpty { RoundType.MORNING_DEFAULT }
+        val settings = wakeDao.settings() ?: AppSettings()
+        val wakeCode = settings.wakeCode
+        // The mix is app-wide now (Settings); the alarm's own roundTypes column is no longer read.
+        val puzzles = effectiveMix(parseMix(settings.puzzleMix), settings.isPlus)
         val lastOpener = wakeDao.lastOpener()?.let { runCatching { RoundType.valueOf(it) }.getOrNull() }
-        val preset = Preset.of(alarm.difficulty)
+        val preset = effectivePreset(override = alarm.difficulty, default = settings.defaultDifficulty)
         val method = WakeMethod.of(alarm.wakeMethod)
         val rounds = roundsFor(
             method,

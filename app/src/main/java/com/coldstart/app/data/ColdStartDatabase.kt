@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Alarm::class, WakeLog::class, RoundResult::class, AppSettings::class], version = 6, exportSchema = false)
+@Database(entities = [Alarm::class, WakeLog::class, RoundResult::class, AppSettings::class], version = 7, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class ColdStartDatabase : RoomDatabase() {
     abstract fun alarmDao(): AlarmDao
@@ -28,8 +28,22 @@ abstract class ColdStartDatabase : RoomDatabase() {
             // fails harmlessly if the phone is still locked.
             runCatching { deviceContext.moveDatabaseFrom(context, NAME) }
             return Room.databaseBuilder(deviceContext, ColdStartDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                 .build()
+        }
+
+        /**
+         * v7: puzzle mix and default difficulty move to Settings, plus the Plus flag. Alarms that were
+         * Normal now follow the default (they never chose Normal: it was simply the default); a Gentle
+         * or Hard alarm keeps that as its own override.
+         */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `settings` ADD COLUMN `puzzleMix` TEXT")
+                db.execSQL("ALTER TABLE `settings` ADD COLUMN `defaultDifficulty` INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE `settings` ADD COLUMN `isPlus` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("UPDATE `alarms` SET `difficulty` = -1 WHERE `difficulty` = 1")
+            }
         }
 
         /** v6: a sound per alarm. Null (every existing alarm) means the phone's default alarm sound. */

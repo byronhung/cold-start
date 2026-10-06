@@ -9,6 +9,7 @@ import com.coldstart.app.alarm.WakeCheck
 import com.coldstart.app.alarm.Weekdays
 import com.coldstart.app.data.Alarm
 import com.coldstart.app.data.AlarmRepository
+import com.coldstart.app.data.FOLLOW_DEFAULT
 import com.coldstart.app.puzzle.Preset
 import com.coldstart.app.puzzle.WakeMethod
 import kotlinx.coroutines.flow.SharingStarted
@@ -26,7 +27,7 @@ data class EditDraft(
     val wakeChecks: Int,
     /** [WakeMethod.code]. */
     val wakeMethod: Int,
-    /** [Preset.code]. */
+    /** [Preset.code], or [FOLLOW_DEFAULT] to use the default from Settings. */
     val difficulty: Int,
     /** Null = the phone's default alarm sound. */
     val soundUri: String?,
@@ -67,7 +68,7 @@ class AlarmEditViewModel(
     // New alarms get one wake check: enough to catch going back to sleep, rarely noticed when awake.
     private fun newDraft() = EditDraft(
         hour = 7, minute = 0, repeatDays = Weekdays.WEEKDAYS, label = "",
-        wakeChecks = 1, wakeMethod = WakeMethod.PUZZLES.code, difficulty = Preset.NORMAL.code, soundUri = null, isNew = true,
+        wakeChecks = 1, wakeMethod = WakeMethod.PUZZLES.code, difficulty = FOLLOW_DEFAULT, soundUri = null, isNew = true,
     )
 
     fun setTime(hour: Int, minute: Int) {
@@ -91,9 +92,14 @@ class AlarmEditViewModel(
         draft = draft?.copy(soundUri = uri)
     }
 
-    fun setDifficulty(preset: Preset) {
-        draft = draft?.copy(difficulty = preset.code)
+    /** [code]: a [Preset.code], or [FOLLOW_DEFAULT]. */
+    fun setDifficulty(code: Int) {
+        draft = draft?.copy(difficulty = code)
     }
+
+    /** The default difficulty from Settings, so the row can say "Normal · your default". */
+    val defaultDifficulty: StateFlow<Preset> = repository.settings.map { Preset.of(it?.defaultDifficulty ?: Preset.NORMAL.code) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Preset.NORMAL)
 
     /** A scan method picked before any code exists: applied once the scanner returns one. */
     private var pendingMethod: WakeMethod? = null

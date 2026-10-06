@@ -5,6 +5,9 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverter
 
+/** [Alarm.difficulty] value meaning "use the default from Settings". */
+const val FOLLOW_DEFAULT = -1
+
 /** One saved alarm: one row in the `alarms` table. */
 @Entity(tableName = "alarms")
 data class Alarm(
@@ -26,8 +29,11 @@ data class Alarm(
     @ColumnInfo(defaultValue = "0") val wakeChecks: Int = 1,
     /** Unused since v5: replaced by [wakeMethod] (the migration carried its value over). */
     @ColumnInfo(defaultValue = "0") val finishWithScan: Boolean = false,
-    /** Difficulty preset, as [com.coldstart.app.puzzle.Preset.code]: 0 Gentle, 1 Normal, 2 Hard. */
-    @ColumnInfo(defaultValue = "1") val difficulty: Int = 1,
+    /**
+     * Difficulty override, as [com.coldstart.app.puzzle.Preset.code]: 0 Gentle, 1 Normal, 2 Hard.
+     * -1 (the default for new alarms) = follow the default difficulty in Settings.
+     */
+    @ColumnInfo(defaultValue = "1") val difficulty: Int = FOLLOW_DEFAULT,
     /** How it stops, as [com.coldstart.app.puzzle.WakeMethod.code]: 0 Puzzles, 1 Scan, 2 Puzzles + scan. */
     @ColumnInfo(defaultValue = "0") val wakeMethod: Int = 0,
     /** The sound picked for this alarm (a content URI). Null = the phone's default alarm sound. */

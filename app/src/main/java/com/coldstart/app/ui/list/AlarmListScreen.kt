@@ -221,7 +221,8 @@ private fun AlarmCard(row: AlarmRowUi, index: Int, onClick: () -> Unit, onToggle
                         WakeMethod.PUZZLES_AND_SCAN -> Chip("Scan", SunIcons.Scan)
                         WakeMethod.PUZZLES -> Unit
                     }
-                    if (WakeMethod.of(row.wakeMethod) != WakeMethod.SCAN) when (Preset.of(row.difficulty)) {
+                    // Only an alarm that overrides the default difficulty gets a tag.
+                    if (row.difficulty >= 0 && WakeMethod.of(row.wakeMethod) != WakeMethod.SCAN) when (Preset.of(row.difficulty)) {
                         Preset.GENTLE -> Chip("Gentle")
                         Preset.HARD -> Chip("Hard")
                         Preset.NORMAL -> Unit

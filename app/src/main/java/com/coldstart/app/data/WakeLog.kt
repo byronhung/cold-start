@@ -28,6 +28,12 @@ data class AppSettings(
     @PrimaryKey val id: Int = 0,
     /** The barcode every "finish with a scan" alarm asks for. Null until registered. */
     val wakeCode: String? = null,
+    /** The puzzle mix every alarm draws from, as "STROOP,PATTERN_FLASH,…". Null = the free three. */
+    val puzzleMix: String? = null,
+    /** [com.coldstart.app.puzzle.Preset.code] used by every alarm that doesn't override it. */
+    @ColumnInfo(defaultValue = "1") val defaultDifficulty: Int = 1,
+    /** Cold Start Plus unlocked. Until Google Play Billing (chunk P11), set by a debug switch. */
+    @ColumnInfo(defaultValue = "0") val isPlus: Boolean = false,
 )
 
 /** One solved puzzle round. Adaptive difficulty reads these. */

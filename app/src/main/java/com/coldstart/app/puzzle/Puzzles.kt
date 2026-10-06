@@ -46,6 +46,45 @@ enum class Preset(val code: Int, val rounds: Int) {
     }
 }
 
+// ---------- puzzle mix ----------
+
+/** Fewer than three and mornings just alternate: the boredom problem comes back. */
+const val MIN_MIX = 3
+
+/**
+ * Every puzzle the mix picker shows. [type] is null for a Plus puzzle that isn't built yet: it shows
+ * in the picker (locked, or "coming soon" with Plus) but can't be chosen.
+ */
+data class CatalogPuzzle(val name: String, val type: RoundType?, val plus: Boolean)
+
+val PUZZLE_CATALOG = listOf(
+    CatalogPuzzle("Stroop", RoundType.STROOP, plus = false),
+    CatalogPuzzle("Pattern", RoundType.PATTERN_FLASH, plus = false),
+    CatalogPuzzle("Odd one out", RoundType.ODD_ONE_OUT, plus = false),
+    CatalogPuzzle("Pairs", null, plus = true),
+    CatalogPuzzle("Path", null, plus = true),
+    CatalogPuzzle("Slide out", null, plus = true),
+)
+
+fun parseMix(saved: String?): List<RoundType> =
+    saved.orEmpty().split(",").mapNotNull { name -> RoundType.entries.firstOrNull { it.name == name.trim() } }
+
+fun encodeMix(mix: List<RoundType>): String = mix.distinct().joinToString(",") { it.name }
+
+/**
+ * The puzzles a morning really draws from: the saved mix, minus anything not built or not owned.
+ * If that leaves fewer than [MIN_MIX], the free three: an alarm always has a full mix.
+ */
+fun effectiveMix(saved: List<RoundType>, isPlus: Boolean): List<RoundType> {
+    val allowed = PUZZLE_CATALOG.filter { it.type != null && (!it.plus || isPlus) }.mapNotNull { it.type }
+    val mix = saved.distinct().filter { it in allowed }
+    return if (mix.size >= MIN_MIX) mix else RoundType.MORNING_DEFAULT
+}
+
+/** An alarm's difficulty: its own override, or the default from Settings. */
+fun effectivePreset(override: Int, default: Int): Preset =
+    if (override < 0) Preset.of(default) else Preset.of(override)
+
 // ---------- how to wake up ----------
 
 /** Per alarm: what stops it. */

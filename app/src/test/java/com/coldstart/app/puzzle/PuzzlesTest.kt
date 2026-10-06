@@ -226,4 +226,40 @@ class PuzzlesTest {
     @Test fun `unknown wake method codes fall back to puzzles`() {
         assertEquals(WakeMethod.PUZZLES, WakeMethod.of(9))
     }
+
+    // ---------- settings defaults ----------
+
+    @Test fun `an alarm with no override follows the default difficulty`() {
+        assertEquals(Preset.HARD, effectivePreset(override = -1, default = Preset.HARD.code))
+    }
+
+    @Test fun `an alarm's own difficulty beats the default`() {
+        assertEquals(Preset.GENTLE, effectivePreset(override = Preset.GENTLE.code, default = Preset.HARD.code))
+    }
+
+    @Test fun `no saved mix means the free three`() {
+        assertEquals(RoundType.MORNING_DEFAULT, effectiveMix(parseMix(null), isPlus = false))
+    }
+
+    @Test fun `a mix below three falls back to the free three`() {
+        assertEquals(RoundType.MORNING_DEFAULT, effectiveMix(listOf(STROOP, ODD_ONE_OUT), isPlus = true))
+    }
+
+    @Test fun `the mix survives a round trip through the database string`() {
+        val mix = listOf(ODD_ONE_OUT, STROOP, PATTERN_FLASH)
+        assertEquals(mix, parseMix(encodeMix(mix)))
+    }
+
+    @Test fun `unknown names in a saved mix are ignored`() {
+        assertEquals(listOf(STROOP), parseMix("STROOP,NOT_A_PUZZLE"))
+    }
+
+    @Test fun `the scan round can never sneak into the puzzle mix`() {
+        assertEquals(RoundType.MORNING_DEFAULT, effectiveMix(listOf(RoundType.QR_SCAN, STROOP, PATTERN_FLASH), isPlus = true))
+    }
+
+    @Test fun `the catalog has three free puzzles and three Plus ones`() {
+        assertEquals(3, PUZZLE_CATALOG.count { !it.plus })
+        assertEquals(3, PUZZLE_CATALOG.count { it.plus })
+    }
 }

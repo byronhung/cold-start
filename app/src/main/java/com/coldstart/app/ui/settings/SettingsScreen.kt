@@ -7,6 +7,27 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.coldstart.app.BuildConfig
+import com.coldstart.app.data.AppSettings
+import com.coldstart.app.data.RoundType
+import com.coldstart.app.puzzle.CatalogPuzzle
+import com.coldstart.app.puzzle.MIN_MIX
+import com.coldstart.app.puzzle.PUZZLE_CATALOG
+import com.coldstart.app.puzzle.Preset
+import com.coldstart.app.puzzle.effectiveMix
+import com.coldstart.app.puzzle.parseMix
+import com.coldstart.app.ui.components.PlusSheet
+import com.coldstart.app.ui.components.Segmented
+import com.coldstart.app.ui.components.SpringToggle
+import com.coldstart.app.ui.components.springClick
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,21 +77,54 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-data class SettingsUi(val wakeCode: String?, val alarmsUsingIt: Int)
+data class SettingsUi(
+    val wakeCode: String?,
+    val alarmsUsingIt: Int,
+    /** The mix as saved (what the picker shows as on). */
+    val mix: List<RoundType>,
+    val defaultDifficulty: Preset,
+    val isPlus: Boolean,
+)
 
 class SettingsViewModel(private val repository: AlarmRepository) : ViewModel() {
-    val ui: StateFlow<SettingsUi?> = combine(repository.settings, repository.alarms) { settings, alarms ->
-        SettingsUi(settings?.wakeCode, alarms.count { it.wakeMethod != 0 })
+    val ui: StateFlow<SettingsUi?> = combine(repository.settings, repository.alarms) { stored, alarms ->
+        val settings = stored ?: AppSettings()
+        SettingsUi(
+            wakeCode = settings.wakeCode,
+            alarmsUsingIt = alarms.count { it.wakeMethod != 0 },
+            mix = effectiveMix(parseMix(settings.puzzleMix), settings.isPlus),
+            defaultDifficulty = Preset.of(settings.defaultDifficulty),
+            isPlus = settings.isPlus,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun setCode(code: String?) {
         viewModelScope.launch { repository.setWakeCode(code) }
+    }
+
+    /** Turns a puzzle on or off. Returns false (and changes nothing) if that would leave fewer than [MIN_MIX]. */
+    fun toggle(type: RoundType): Boolean {
+        val now = ui.value?.mix ?: return false
+        val next = if (type in now) now - type else now + type
+        if (next.size < MIN_MIX) return false
+        viewModelScope.launch { repository.setPuzzleMix(next) }
+        return true
+    }
+
+    fun setDefaultDifficulty(preset: Preset) {
+        viewModelScope.launch { repository.setDefaultDifficulty(preset) }
+    }
+
+    fun setPlus(on: Boolean) {
+        viewModelScope.launch { repository.setPlus(on) }
     }
 }
 
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel, onScan: () -> Unit, onBack: () -> Unit) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
+    var plusReason by remember { mutableStateOf<String?>(null) }
+    var mixNote by remember { mutableStateOf<String?>(null) }
     SkyBackground(Skies.Night) {
         val sky = LocalSky.current
         Column(
@@ -88,6 +142,62 @@ fun SettingsScreen(viewModel: SettingsViewModel, onScan: () -> Unit, onBack: () 
             ) {
                 IconSquareButton(SunIcons.Back, "Back", onBack)
                 Text("Settings", style = ColdText.title, color = sky.ink)
+            }
+
+            val current = ui
+            if (current != null) {
+                if (!current.isPlus) PlusTeaser { plusReason = "Three more puzzles, four new skies and your stats." }
+
+                GlassCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            SectionLabel("Puzzle mix", Modifier.weight(1f))
+                            Text("${current.mix.size} of ${PUZZLE_CATALOG.size} on", style = ColdText.caption.copy(fontSize = 12.5.sp), color = sky.mute)
+                        }
+                        PUZZLE_CATALOG.chunked(3).forEach { row ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                row.forEach { entry ->
+                                    MixTile(
+                                        entry = entry,
+                                        on = entry.type != null && entry.type in current.mix,
+                                        isPlus = current.isPlus,
+                                        modifier = Modifier.weight(1f),
+                                        onTap = {
+                                            when {
+                                                entry.plus && !current.isPlus -> plusReason = "${entry.name} is part of Cold Start Plus."
+                                                entry.type == null -> mixNote = "${entry.name} is coming soon."
+                                                !viewModel.toggle(entry.type) -> mixNote = "At least $MIN_MIX stay on, so mornings never just alternate."
+                                                else -> mixNote = null
+                                            }
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                        Text(
+                            mixNote ?: if (current.isPlus) "Every alarm draws from these. At least $MIN_MIX stay on."
+                            else "Every alarm draws from these three. Plus adds three more to mix in.",
+                            style = ColdText.caption.copy(fontSize = 12.5.sp),
+                            color = sky.dim,
+                        )
+                    }
+                }
+
+                GlassCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        SectionLabel("Default difficulty")
+                        Segmented(
+                            listOf("Gentle", "Normal", "Hard"),
+                            Preset.entries.indexOf(current.defaultDifficulty),
+                            onSelect = { viewModel.setDefaultDifficulty(Preset.entries[it]) },
+                        )
+                        Text(
+                            "Every alarm uses this unless you change that one alarm.",
+                            style = ColdText.caption.copy(fontSize = 12.5.sp),
+                            color = sky.dim,
+                        )
+                    }
+                }
             }
 
             GlassCard(Modifier.fillMaxWidth()) {
@@ -136,7 +246,26 @@ fun SettingsScreen(viewModel: SettingsViewModel, onScan: () -> Unit, onBack: () 
                 color = sky.mute,
                 modifier = Modifier.padding(horizontal = 8.dp),
             )
+
+            // Debug builds only: flip Plus on and off until Google Play Billing replaces this (P11).
+            if (BuildConfig.DEBUG && ui != null) {
+                GlassCard(Modifier.fillMaxWidth()) {
+                    Row(
+                        Modifier.padding(18.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Debug: Plus", style = ColdText.bodyStrong, color = sky.ink)
+                            Text("Not in release builds.", style = ColdText.caption, color = sky.mute)
+                        }
+                        SpringToggle(ui?.isPlus == true, { viewModel.setPlus(it) }, "Debug Plus")
+                    }
+                }
+            }
         }
+
+        PlusSheet(reason = plusReason, onDismiss = { plusReason = null })
     }
 }
 
@@ -193,5 +322,53 @@ private fun BarcodeArt(code: String) {
             drawLine(Sun.Rose.copy(alpha = 0.35f), Offset(0f, ly), Offset(size.width, ly), strokeWidth = 10.dp.toPx())
             drawLine(Sun.Rose, Offset(0f, ly), Offset(size.width, ly), strokeWidth = 2.dp.toPx())
         }
+    }
+}
+
+/** One puzzle in the mix picker: amber when on, a lock when it's Plus and not owned. */
+@Composable
+private fun MixTile(entry: CatalogPuzzle, on: Boolean, isPlus: Boolean, modifier: Modifier, onTap: () -> Unit) {
+    val sky = LocalSky.current
+    val locked = entry.plus && !isPlus
+    val soon = entry.type == null && !locked
+    Box(
+        modifier
+            .springClick(0.92f, onClick = onTap)
+            .height(74.dp)
+            .clip(ColdShapes.small)
+            .background(if (on) Sun.ToggleLight.copy(alpha = 0.16f) else sky.card)
+            .border(1.dp, if (on) Sun.ToggleLight.copy(alpha = 0.6f) else sky.cardEdge, ColdShapes.small)
+            .semantics { contentDescription = entry.name + when { locked -> ", Plus"; soon -> ", coming soon"; on -> ", on"; else -> ", off" } },
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(entry.name, style = ColdText.chip.copy(fontSize = 12.sp), color = sky.ink.copy(alpha = if (locked || soon) 0.55f else 1f))
+            if (soon) Text("Coming soon", style = ColdText.chip.copy(fontSize = 10.sp), color = sky.mute)
+        }
+        if (locked) {
+            Icon(SunIcons.Lock, contentDescription = null, tint = Sun.ToggleLight, modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).size(12.dp))
+        }
+    }
+}
+
+/** The Settings banner for free users: one line, opens the Plus sheet. */
+@Composable
+private fun PlusTeaser(onClick: () -> Unit) {
+    val sky = LocalSky.current
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .springClick(0.97f, onClick = onClick)
+            .clip(ColdShapes.button)
+            .background(Brush.linearGradient(listOf(Sun.AmberLight.copy(alpha = 0.22f), Sun.Amber.copy(alpha = 0.22f))))
+            .border(1.dp, Sun.ToggleLight.copy(alpha = 0.45f), ColdShapes.button)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text("Cold Start Plus", style = ColdText.bodyStrong, color = sky.ink)
+            Text("3 puzzles, 4 skies, your stats. Pay once.", style = ColdText.caption, color = sky.dim)
+        }
+        Text("See", style = ColdText.bodyStrong, color = Sun.ToggleLight)
     }
 }

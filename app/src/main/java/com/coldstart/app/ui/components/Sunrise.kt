@@ -538,6 +538,7 @@ object SunIcons {
     val Back = stroke("back", "M15 5l-7 7 7 7", width = 2f)
     val Plus = stroke("plus", "M12 5v14M5 12h14", width = 2.4f)
     val Check = stroke("check", "M5 12.5l4.5 4.5L19 7.5", width = 2.4f)
+    val Lock = stroke("lock", "M5 11h14v10H5z", "M8 11V8a4 4 0 0 1 8 0v3", width = 2.4f)
     val Scan = stroke(
         "scan",
         "M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M8 9v6M11 9v6M14 9v6M17 9v6",

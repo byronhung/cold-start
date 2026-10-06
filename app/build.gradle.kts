@@ -64,6 +64,8 @@ android {
     }
     buildFeatures {
         compose = true
+        // BuildConfig.DEBUG gates the Plus debug switch in Settings (until Google Play Billing).
+        buildConfig = true
     }
 }
 

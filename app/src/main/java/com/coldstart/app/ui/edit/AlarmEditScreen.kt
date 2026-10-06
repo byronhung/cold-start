@@ -43,6 +43,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coldstart.app.alarm.Weekdays
 import com.coldstart.app.alarm.formatTime
 import com.coldstart.app.puzzle.Preset
+import com.coldstart.app.data.FOLLOW_DEFAULT
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.graphics.graphicsLayer
 import com.coldstart.app.puzzle.WakeMethod
 import com.coldstart.app.ui.components.AmberButton
 import com.coldstart.app.ui.components.DayPill
@@ -64,11 +70,13 @@ import java.time.LocalTime
 @Composable
 fun AlarmEditScreen(viewModel: AlarmEditViewModel, onScanForCode: () -> Unit, onDone: () -> Unit) {
     val wakeCode by viewModel.wakeCode.collectAsStateWithLifecycle()
+    val defaultDifficulty by viewModel.defaultDifficulty.collectAsStateWithLifecycle()
     SkyBackground(Skies.forHour(LocalTime.now().hour)) {
         val draft = viewModel.draft ?: return@SkyBackground
         AlarmEditContent(
             draft = draft,
             hasWakeCode = wakeCode != null,
+            defaultDifficulty = defaultDifficulty,
             onMethod = { if (viewModel.pickMethod(it)) onScanForCode() },
             onCancel = onDone,
             onSave = { viewModel.save(onDone) },
@@ -90,13 +98,14 @@ private val DAY_NAMES = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Fr
 private fun AlarmEditContent(
     draft: EditDraft,
     hasWakeCode: Boolean,
+    defaultDifficulty: Preset,
     onMethod: (WakeMethod) -> Unit,
     onCancel: () -> Unit,
     onSave: () -> Unit,
     onTime: (Int, Int) -> Unit,
     onToggleDay: (Int) -> Unit,
     onChecks: (Int) -> Unit,
-    onDifficulty: (Preset) -> Unit,
+    onDifficulty: (Int) -> Unit,
     onSound: (String?) -> Unit,
     onLabel: (String) -> Unit,
     onDelete: () -> Unit,
@@ -159,30 +168,43 @@ private fun AlarmEditContent(
                 }
             }
 
+            // Everything below already follows your defaults. Each row shows its value and only
+            // opens if this one alarm should be different: setting an alarm is time, days, save.
             val method = WakeMethod.of(draft.wakeMethod)
-            Section {
-                SectionLabel("How to wake up")
-                Segmented(listOf("Puzzles", "Scan", "Both"), WakeMethod.entries.indexOf(method), onSelect = { onMethod(WakeMethod.entries[it]) })
-                Text(methodLine(method, hasWakeCode), style = ColdText.caption, color = sky.dim)
-            }
-
-            // Difficulty only means something when there are puzzles.
-            if (method != WakeMethod.SCAN) {
-                Section {
-                    SectionLabel("Difficulty")
-                    val preset = Preset.of(draft.difficulty)
-                    Segmented(listOf("Gentle", "Normal", "Hard"), Preset.entries.indexOf(preset), onSelect = { onDifficulty(Preset.entries[it]) })
-                    Text(difficultyLine(preset), style = ColdText.caption, color = sky.dim)
+            var open by remember { mutableStateOf<String?>(null) }
+            fun toggle(row: String) { open = if (open == row) null else row }
+            GlassCard(Modifier.fillMaxWidth()) {
+                ExpandableRow("How to wake up", methodName(method), open == "method", { toggle("method") }, first = true) {
+                    Segmented(listOf("Puzzles", "Scan", "Both"), WakeMethod.entries.indexOf(method), onSelect = { onMethod(WakeMethod.entries[it]) })
+                    Text(methodLine(method, hasWakeCode), style = ColdText.caption, color = sky.dim)
                 }
-            }
-
-            Section {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-                    SectionLabel("Wake checks", Modifier.weight(1f))
-                    Text("instead of snooze", style = ColdText.caption.copy(fontSize = ColdText.label.fontSize), color = sky.mute)
+                // Difficulty only means something when there are puzzles.
+                if (method != WakeMethod.SCAN) {
+                    val override = draft.difficulty
+                    val shown = if (override < 0) "${defaultDifficulty.label} · your default" else "${Preset.of(override).label} · this alarm only"
+                    ExpandableRow("Difficulty", shown, open == "difficulty", { toggle("difficulty") }) {
+                        // Index 0 = follow the default; 1–3 = Gentle, Normal, Hard for this alarm.
+                        val selected = if (override < 0) 0 else Preset.entries.indexOf(Preset.of(override)) + 1
+                        Segmented(listOf("Default", "Gentle", "Normal", "Hard"), selected, onSelect = {
+                            onDifficulty(if (it == 0) FOLLOW_DEFAULT else Preset.entries[it - 1].code)
+                        })
+                        Text(
+                            if (override < 0) "Follows Settings, currently ${defaultDifficulty.label}. " + difficultyLine(defaultDifficulty)
+                            else difficultyLine(Preset.of(override)),
+                            style = ColdText.caption,
+                            color = sky.dim,
+                        )
+                    }
                 }
-                Segmented(listOf("Off", "1", "2", "3"), draft.wakeChecks, onChecks)
-                Text(checksLine(draft.wakeChecks), style = ColdText.caption, color = sky.dim)
+                ExpandableRow(
+                    "Wake checks",
+                    if (draft.wakeChecks == 0) "Off" else draft.wakeChecks.toString(),
+                    open == "checks",
+                    { toggle("checks") },
+                ) {
+                    Segmented(listOf("Off", "1", "2", "3"), draft.wakeChecks, onChecks)
+                    Text(checksLine(draft.wakeChecks), style = ColdText.caption, color = sky.dim)
+                }
             }
 
             SoundRow(draft.soundUri, onSound)
@@ -274,6 +296,49 @@ private fun repeatPhrase(days: Int): String = when (days) {
     0b1111111 -> "every day"
     else -> "on " + DayOfWeek.entries.filter { Weekdays.has(days, it) }
         .joinToString(", ") { DAY_NAMES[it.value - 1].take(3) }
+}
+
+private fun methodName(method: WakeMethod): String = when (method) {
+    WakeMethod.PUZZLES -> "Puzzles"
+    WakeMethod.SCAN -> "Scan only"
+    WakeMethod.PUZZLES_AND_SCAN -> "Puzzles + scan"
+}
+
+private val Preset.label: String get() = name.lowercase().replaceFirstChar { it.uppercase() }
+
+/** A row that shows its current value and opens in place to change it. */
+@Composable
+private fun ExpandableRow(
+    label: String,
+    value: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    first: Boolean = false,
+    content: @Composable () -> Unit,
+) {
+    val sky = LocalSky.current
+    val turn by animateFloatAsState(if (expanded) 90f else 0f, label = "chevron")
+    Column {
+        if (!first) Box(Modifier.fillMaxWidth().height(1.dp).background(sky.cardEdge.copy(alpha = 0.5f)))
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onToggle)
+                .padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(label, style = ColdText.bodyStrong, color = sky.ink, modifier = Modifier.weight(1f))
+            Text(value, style = ColdText.caption, color = sky.dim)
+            Text("›", style = ColdText.header, color = sky.mute, modifier = Modifier.graphicsLayer { rotationZ = turn })
+        }
+        AnimatedVisibility(expanded) {
+            Column(
+                Modifier.padding(start = 18.dp, end = 18.dp, bottom = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) { content() }
+        }
+    }
 }
 
 private fun methodLine(method: WakeMethod, hasCode: Boolean): String = when (method) {
