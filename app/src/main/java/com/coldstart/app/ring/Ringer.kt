@@ -24,6 +24,9 @@ import kotlin.math.ceil
  * mute. The volume lock holds that stream at 80% or more for as long as it rings, checking once a
  * second, so turning it down in Settings bounces straight back. The original volume is restored
  * when the ring ends.
+ *
+ * [setQuiet] silences the sound and vibration while the puzzle is being solved (see
+ * [QuietWhileSolving]). The volume lock keeps running underneath, so it comes back at full volume.
  */
 class Ringer(private val context: Context) {
     private val audio = context.getSystemService(AudioManager::class.java)
@@ -37,9 +40,13 @@ class Ringer(private val context: Context) {
     private var tone: ToneGenerator? = null
     private var guard: Job? = null
     private var originalVolume = -1
+    private var scope: CoroutineScope? = null
+    private var quiet = false
+    private var fade: Job? = null
 
     /** [soundUri]: the alarm's own sound, or null for the phone's default alarm sound. */
     fun start(scope: CoroutineScope, soundUri: String? = null) {
+        this.scope = scope
         originalVolume = audio.getStreamVolume(AudioManager.STREAM_ALARM)
         holdVolume()
         player = createPlayer(soundUri)
@@ -49,19 +56,47 @@ class Ringer(private val context: Context) {
             // No ringtone readable (e.g. right after a reboot, before first unlock): a generated tone.
             tone = runCatching { ToneGenerator(AudioManager.STREAM_ALARM, ToneGenerator.MAX_VOLUME) }.getOrNull()
         }
-        @Suppress("DEPRECATION")
-        vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 700, 500), 0), alarmAttributes)
+        vibrate()
 
         guard = scope.launch {
             while (isActive) {
-                tone?.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 800)
+                if (!quiet) tone?.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 800)
                 delay(1_000)
                 holdVolume()
             }
         }
     }
 
+    /** Quiet fades out over [FADE_MS]; loud comes back at full volume at once. */
+    fun setQuiet(quiet: Boolean) {
+        if (quiet == this.quiet) return
+        this.quiet = quiet
+        Log.d(TAG, if (quiet) "quiet: puzzle tapped" else "loud: no tap for a while")
+        fade?.cancel()
+        val p = player
+        if (quiet) {
+            vibrator?.cancel()
+            tone?.stopTone()
+            if (p != null) fade = scope?.launch {
+                for (i in FADE_STEPS - 1 downTo 0) {
+                    val v = i.toFloat() / FADE_STEPS
+                    runCatching { p.setVolume(v, v) }
+                    delay(FADE_MS / FADE_STEPS)
+                }
+            }
+        } else {
+            runCatching { p?.setVolume(1f, 1f) }
+            vibrate()
+        }
+    }
+
+    private fun vibrate() {
+        @Suppress("DEPRECATION")
+        vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 700, 500), 0), alarmAttributes)
+    }
+
     fun stop() {
+        fade?.cancel()
         guard?.cancel()
         player?.let {
             runCatching { it.stop() }
@@ -114,5 +149,7 @@ class Ringer(private val context: Context) {
     private companion object {
         const val TAG = "Ringer"
         const val VOLUME_FLOOR = 0.8
+        const val FADE_MS = 300L
+        const val FADE_STEPS = 6
     }
 }

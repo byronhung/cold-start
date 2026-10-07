@@ -8,6 +8,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import android.os.SystemClock
 import android.util.Log
 import com.coldstart.app.ColdStartApp
 import com.coldstart.app.data.WakeOutcome
@@ -17,6 +18,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -63,6 +65,13 @@ class RingService : Service() {
             controller.begin(session)
             goForeground(Notifications.ringing(this@RingService, session))
             ringer = Ringer(this@RingService).also { it.start(scope, session.soundUri) }
+            // Quiet while you solve: checked often enough that a tap silences it within a blink.
+            launch {
+                while (isActive) {
+                    ringer?.setQuiet(QuietWhileSolving.isQuiet(controller.lastTap.value, SystemClock.elapsedRealtime()))
+                    delay(QUIET_POLL_MS)
+                }
+            }
             delay(RING_TIMEOUT_MS)
             controller.finish(WakeOutcome.TIMED_OUT, emptyList())
         }
@@ -115,6 +124,7 @@ class RingService : Service() {
 
         /** An alarm nobody answers stops after an hour, logged as timed out. */
         const val RING_TIMEOUT_MS = 60 * 60 * 1000L
+        private const val QUIET_POLL_MS = 150L
 
         fun startIntent(context: Context, alarmId: Long, isRering: Boolean = false): Intent =
             Intent(context, RingService::class.java)

@@ -1,5 +1,6 @@
 package com.coldstart.app.ring
 
+import android.os.SystemClock
 import com.coldstart.app.data.AlarmRepository
 import com.coldstart.app.data.RoundType
 import com.coldstart.app.data.WakeOutcome
@@ -55,21 +56,34 @@ class RingController(
 
     val isActive: Boolean get() = _state.value != RingState.Idle
 
+    private val _lastTap = MutableStateFlow<Long?>(null)
+
+    /** When the puzzle was last tapped this ring (elapsedRealtime). See [QuietWhileSolving]. */
+    val lastTap: StateFlow<Long?> = _lastTap.asStateFlow()
+
+    fun puzzleTapped(at: Long = SystemClock.elapsedRealtime()) {
+        if (_state.value is RingState.Ringing) _lastTap.value = at
+    }
+
     fun markStarting() {
+        _lastTap.value = null
         _state.value = RingState.Starting
     }
 
     fun begin(session: RingSession) {
+        _lastTap.value = null
         _state.value = RingState.Ringing(session)
     }
 
     /** The alarm turned out not to need ringing (deleted or switched off in the meantime). */
     fun abort() {
+        _lastTap.value = null
         _state.value = RingState.Idle
     }
 
     fun finish(outcome: WakeOutcome, results: List<RoundResultDraft>) {
         val ringing = _state.value as? RingState.Ringing
+        _lastTap.value = null
         _state.value = RingState.Idle
         if (ringing != null) {
             scope.launch { repository.finishWake(ringing.session, outcome, results) }

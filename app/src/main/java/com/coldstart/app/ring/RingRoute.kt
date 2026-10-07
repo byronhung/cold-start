@@ -42,6 +42,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -97,6 +100,7 @@ fun RingRoute(controller: RingController, is24Hour: Boolean, onClose: () -> Unit
                 RingScreen(
                     session = session,
                     is24Hour = is24Hour,
+                    onPuzzleTap = { controller.puzzleTapped() },
                     onSolved = { results, totalMs ->
                         ending = Ending.Solved(totalMs, session.wakeChecks)
                         controller.finish(WakeOutcome.SOLVED, results)
@@ -127,6 +131,7 @@ fun RingRoute(controller: RingController, is24Hour: Boolean, onClose: () -> Unit
 private fun RingScreen(
     session: RingSession,
     is24Hour: Boolean,
+    onPuzzleTap: () -> Unit,
     onSolved: (List<RoundResultDraft>, Long) -> Unit,
     onGiveUp: (List<RoundResultDraft>) -> Unit,
 ) {
@@ -184,7 +189,15 @@ private fun RingScreen(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .padding(vertical = 14.dp),
+                .padding(vertical = 14.dp)
+                // Watches touches on the way down without taking them: the puzzle still gets every tap.
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            if (awaitPointerEvent(PointerEventPass.Initial).type == PointerEventType.Press) onPuzzleTap()
+                        }
+                    }
+                },
             contentAlignment = Alignment.Center,
         ) {
             AnimatedContent(
