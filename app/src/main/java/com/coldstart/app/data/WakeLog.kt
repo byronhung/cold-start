@@ -4,7 +4,8 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-enum class WakeOutcome { SOLVED, GAVE_UP, TIMED_OUT }
+/** [AWAY]: solved, but with "Not home?" puzzles in place of the scan. Stored by name, so no migration. */
+enum class WakeOutcome { SOLVED, AWAY, GAVE_UP, TIMED_OUT }
 
 /** One time an alarm rang. [outcome] stays null if the ring never ended cleanly (process killed). */
 @Entity(tableName = "wake_log")

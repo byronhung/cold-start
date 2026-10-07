@@ -20,6 +20,8 @@ data class RingSession(
     val label: String,
     val rounds: List<RoundType>,
     val levels: Map<RoundType, Int>,
+    /** The puzzles this morning draws from: what "Not home?" swaps the scan for. */
+    val mix: List<RoundType> = emptyList(),
     val qrCode: String?,
     /** "Still awake?" checks after solving, 0–3. */
     val wakeChecks: Int = 0,

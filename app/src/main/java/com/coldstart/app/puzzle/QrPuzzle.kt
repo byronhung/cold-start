@@ -30,10 +30,11 @@ import com.coldstart.app.ui.theme.ColdText
 /**
  * The last round, when an alarm has a registered code: get out of bed, walk to it, scan it.
  * A different code counts as a miss (at most once every two seconds, since the camera sees it
- * many times a second).
+ * many times a second). [onNotHome] swaps this round for hard puzzles, for when the code is at home
+ * and you aren't; null hides the link.
  */
 @Composable
-fun QrPuzzle(expected: String, onMiss: () -> Unit, onSolved: () -> Unit) {
+fun QrPuzzle(expected: String, onMiss: () -> Unit, onSolved: () -> Unit, onNotHome: (() -> Unit)? = null) {
     val context = LocalContext.current
     val hasCamera = remember {
         ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
@@ -57,6 +58,7 @@ fun QrPuzzle(expected: String, onMiss: () -> Unit, onSolved: () -> Unit) {
                 color = Sun.OnGlass.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
             )
+            NotHomeLink(onNotHome)
             return@Column
         }
         BarcodeScanner(
@@ -81,5 +83,20 @@ fun QrPuzzle(expected: String, onMiss: () -> Unit, onSolved: () -> Unit) {
             Text(if (torch) "Torch off" else "Torch on", style = ColdText.body, color = Sun.OnGlass)
         }
         MissNote(misses, text = "That's a different code.")
+        NotHomeLink(onNotHome)
+    }
+}
+
+/** The cost is on the label: in bed, walking to the code is always the cheaper way out. */
+@Composable
+private fun NotHomeLink(onNotHome: (() -> Unit)?) {
+    if (onNotHome == null) return
+    TextButton(onClick = onNotHome) {
+        Text(
+            "Not home? Solve $NOT_HOME_ROUNDS hard puzzles instead",
+            style = ColdText.caption,
+            color = Sun.OnGlass.copy(alpha = 0.7f),
+            textAlign = TextAlign.Center,
+        )
     }
 }

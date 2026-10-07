@@ -130,6 +130,7 @@ class AlarmRepository(
             label = alarm.label,
             rounds = rounds,
             levels = levels,
+            mix = puzzles,
             qrCode = if (RoundType.QR_SCAN in rounds) wakeCode else null,
             wakeChecks = alarm.wakeChecks.coerceIn(0, WakeCheck.MAX),
             preset = preset,
@@ -155,7 +156,10 @@ class AlarmRepository(
         }
     }
 
-    /** Only a solve earns wake checks: a give-up or a time-out has already ended the morning. */
+    /**
+     * Only a solve earns wake checks: a give-up or a time-out has already ended the morning. An away
+     * solve counts, so "Not home?" tapped in bed still has a check waiting.
+     */
     suspend fun finishWake(session: RingSession, outcome: WakeOutcome, results: List<RoundResultDraft>) {
         val wakeId = session.wakeId
         wakeDao.finish(wakeId, System.currentTimeMillis(), outcome.name)
@@ -166,7 +170,7 @@ class AlarmRepository(
                 results.map { RoundResult(wakeId = wakeId, type = it.type, level = it.level, solveMs = it.solveMs, misses = it.misses) },
             )
         }
-        if (outcome == WakeOutcome.SOLVED) {
+        if (outcome == WakeOutcome.SOLVED || outcome == WakeOutcome.AWAY) {
             WakeCheck.first(session.alarmId, wakeId, session.wakeChecks)?.let { scheduleCheck(it) }
         }
     }
