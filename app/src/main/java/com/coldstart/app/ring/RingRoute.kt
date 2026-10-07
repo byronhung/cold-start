@@ -90,6 +90,14 @@ private sealed interface Ending {
 @Composable
 fun RingRoute(controller: RingController, is24Hour: Boolean, onClose: () -> Unit) {
     val state by controller.state.collectAsStateWithLifecycle()
+    val lastTap by controller.lastTap.collectAsStateWithLifecycle()
+    // The same rule the service rings by, re-checked often enough that the hint flips with the sound.
+    val quiet by produceState(false, lastTap) {
+        while (true) {
+            value = QuietWhileSolving.isQuiet(lastTap, SystemClock.elapsedRealtime())
+            delay(250)
+        }
+    }
     // Set the moment the ring ends here, so the closing screen shows instead of an instant exit.
     var ending by remember { mutableStateOf<Ending?>(null) }
 
@@ -102,6 +110,7 @@ fun RingRoute(controller: RingController, is24Hour: Boolean, onClose: () -> Unit
                 RingScreen(
                     session = session,
                     is24Hour = is24Hour,
+                    quiet = quiet,
                     onPuzzleTap = { controller.puzzleTapped() },
                     onSolved = { results, totalMs, noScan ->
                         ending = Ending.Solved(totalMs, session.wakeChecks, noScan)
@@ -133,6 +142,7 @@ fun RingRoute(controller: RingController, is24Hour: Boolean, onClose: () -> Unit
 private fun RingScreen(
     session: RingSession,
     is24Hour: Boolean,
+    quiet: Boolean,
     onPuzzleTap: () -> Unit,
     onSolved: (List<RoundResultDraft>, Long, Boolean) -> Unit,
     onGiveUp: (List<RoundResultDraft>) -> Unit,
@@ -197,6 +207,14 @@ private fun RingScreen(
             if (scanOnly) "SCAN YOUR CODE TO STOP IT" else "ROUND ${index + 1} OF ${rounds.size}",
             style = ColdText.label.copy(letterSpacing = 0.18.em),
             color = Sun.OnGlass.copy(alpha = 0.7f),
+        )
+        // Without this, nobody finds out that tapping silences it: on the scan round there's
+        // nothing to tap.
+        Text(
+            if (quiet) "Quiet while you keep tapping" else "Tap the screen to quiet it",
+            style = ColdText.caption,
+            color = Sun.OnGlass.copy(alpha = if (quiet) 0.55f else 0.85f),
+            modifier = Modifier.padding(top = 6.dp),
         )
 
         Box(
