@@ -157,8 +157,8 @@ class AlarmRepository(
     }
 
     /**
-     * Only a solve earns wake checks: a give-up or a time-out has already ended the morning. An away
-     * solve counts, so "Not home?" tapped in bed still has a check waiting.
+     * Only a solve earns wake checks: a give-up or a time-out has already ended the morning. A no-scan
+     * solve counts, so "Can't scan now?" tapped in bed still has a check waiting.
      */
     suspend fun finishWake(session: RingSession, outcome: WakeOutcome, results: List<RoundResultDraft>) {
         val wakeId = session.wakeId
@@ -170,7 +170,7 @@ class AlarmRepository(
                 results.map { RoundResult(wakeId = wakeId, type = it.type, level = it.level, solveMs = it.solveMs, misses = it.misses) },
             )
         }
-        if (outcome == WakeOutcome.SOLVED || outcome == WakeOutcome.AWAY) {
+        if (outcome == WakeOutcome.SOLVED || outcome == WakeOutcome.NO_SCAN) {
             WakeCheck.first(session.alarmId, wakeId, session.wakeChecks)?.let { scheduleCheck(it) }
         }
     }

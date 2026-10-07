@@ -223,27 +223,27 @@ class PuzzlesTest {
         for (m in WakeMethod.entries) assertEquals(five, roundsFor(m, five, hasCode = false))
     }
 
-    @Test fun `not home swaps a scan-only morning for two puzzles`() {
+    @Test fun `can't scan swaps a scan-only morning for two puzzles`() {
         repeat(100) { seed ->
-            val swapped = notHomeRounds(listOf(RoundType.QR_SCAN), pool, Random(seed))
-            assertEquals(NOT_HOME_ROUNDS, swapped.size)
+            val swapped = cantScanRounds(listOf(RoundType.QR_SCAN), pool, Random(seed))
+            assertEquals(CANT_SCAN_ROUNDS, swapped.size)
             assertTrue(swapped.all { it in pool })
         }
     }
 
-    @Test fun `not home keeps the puzzles before the scan and doesn't repeat the last one`() {
+    @Test fun `can't scan keeps the puzzles before the scan and doesn't repeat the last one`() {
         repeat(100) { seed ->
             val both = five + RoundType.QR_SCAN
-            val swapped = notHomeRounds(both, pool, Random(seed))
+            val swapped = cantScanRounds(both, pool, Random(seed))
             assertEquals(five, swapped.take(five.size))
-            assertEquals(five.size + NOT_HOME_ROUNDS, swapped.size)
+            assertEquals(five.size + CANT_SCAN_ROUNDS, swapped.size)
             assertNotEquals(five.last(), swapped[five.size])
             assertTrue(RoundType.QR_SCAN !in swapped)
         }
     }
 
-    @Test fun `not home does nothing without a scan round`() {
-        assertEquals(five, notHomeRounds(five, pool, Random(1)))
+    @Test fun `can't scan does nothing without a scan round`() {
+        assertEquals(five, cantScanRounds(five, pool, Random(1)))
     }
 
     @Test fun `unknown wake method codes fall back to puzzles`() {

@@ -65,7 +65,7 @@ import com.coldstart.app.puzzle.PathPuzzle
 import com.coldstart.app.puzzle.QrPuzzle
 import com.coldstart.app.puzzle.SlidePuzzle
 import com.coldstart.app.puzzle.StroopPuzzle
-import com.coldstart.app.puzzle.notHomeRounds
+import com.coldstart.app.puzzle.cantScanRounds
 import com.coldstart.app.ui.components.HoldToGiveUp
 import com.coldstart.app.ui.components.Pips
 import com.coldstart.app.ui.components.SkyBackground
@@ -83,7 +83,7 @@ import kotlin.random.Random
 const val GIVE_UP_HOLD_MS = 30_000L
 
 private sealed interface Ending {
-    data class Solved(val totalMs: Long, val checks: Int, val away: Boolean) : Ending
+    data class Solved(val totalMs: Long, val checks: Int, val noScan: Boolean) : Ending
     data object GaveUp : Ending
 }
 
@@ -103,9 +103,9 @@ fun RingRoute(controller: RingController, is24Hour: Boolean, onClose: () -> Unit
                     session = session,
                     is24Hour = is24Hour,
                     onPuzzleTap = { controller.puzzleTapped() },
-                    onSolved = { results, totalMs, away ->
-                        ending = Ending.Solved(totalMs, session.wakeChecks, away)
-                        controller.finish(if (away) WakeOutcome.AWAY else WakeOutcome.SOLVED, results)
+                    onSolved = { results, totalMs, noScan ->
+                        ending = Ending.Solved(totalMs, session.wakeChecks, noScan)
+                        controller.finish(if (noScan) WakeOutcome.NO_SCAN else WakeOutcome.SOLVED, results)
                     },
                     onGiveUp = { results ->
                         ending = Ending.GaveUp
@@ -138,9 +138,9 @@ private fun RingScreen(
     onGiveUp: (List<RoundResultDraft>) -> Unit,
 ) {
     var rounds by remember { mutableStateOf(session.rounds) }
-    // Where "Not home?" puzzles start, once tapped. They're all top level and never logged as
+    // Where "Can't scan now?" puzzles start, once tapped. They're all top level and never logged as
     // results: a forced Hard round would drag the automatic difficulty back to the top.
-    var awayFrom by remember { mutableStateOf<Int?>(null) }
+    var cantScanFrom by remember { mutableStateOf<Int?>(null) }
     var index by remember { mutableIntStateOf(0) }
     val results = remember { mutableStateListOf<RoundResultDraft>() }
     val firstStart = remember { SystemClock.elapsedRealtime() }
@@ -154,20 +154,20 @@ private fun RingScreen(
         }
     }
 
-    fun levelAt(i: Int): Int = awayFrom?.takeIf { i >= it }?.let { Levels.MAX } ?: levelOf(session, rounds[i])
+    fun levelAt(i: Int): Int = cantScanFrom?.takeIf { i >= it }?.let { Levels.MAX } ?: levelOf(session, rounds[i])
 
     fun roundSolved() {
         val type = rounds[index]
         val t = SystemClock.elapsedRealtime()
-        if (awayFrom == null) results += RoundResultDraft(type, levelAt(index), t - roundStart, misses)
+        if (cantScanFrom == null) results += RoundResultDraft(type, levelAt(index), t - roundStart, misses)
         misses = 0
         roundStart = t
-        if (index == rounds.lastIndex) onSolved(results.toList(), t - firstStart, awayFrom != null) else index++
+        if (index == rounds.lastIndex) onSolved(results.toList(), t - firstStart, cantScanFrom != null) else index++
     }
 
-    fun notHome() {
-        awayFrom = index
-        rounds = notHomeRounds(rounds, session.mix, Random.Default)
+    fun cantScan() {
+        cantScanFrom = index
+        rounds = cantScanRounds(rounds, session.mix, Random.Default)
         misses = 0
         roundStart = SystemClock.elapsedRealtime()
     }
@@ -215,7 +215,7 @@ private fun RingScreen(
             contentAlignment = Alignment.Center,
         ) {
             AnimatedContent(
-                // Keyed on the round's type too, so the "Not home?" swap slides in like a new round.
+                // Keyed on the round's type too, so the "Can't scan now?" swap slides in like a new round.
                 targetState = index to rounds[index],
                 transitionSpec = {
                     (slideInHorizontally(Motion.settle()) { it / 6 } + fadeIn(tween(300)) + scaleIn(Motion.settle(), initialScale = 0.96f))
@@ -230,7 +230,7 @@ private fun RingScreen(
                         RoundType.STROOP -> StroopPuzzle(level, onMiss, ::roundSolved)
                         RoundType.PATTERN_FLASH -> PatternPuzzle(level, onMiss, ::roundSolved)
                         RoundType.ODD_ONE_OUT -> OddOneOutPuzzle(level, onMiss, ::roundSolved)
-                        RoundType.QR_SCAN -> QrPuzzle(session.qrCode.orEmpty(), onMiss, ::roundSolved, onNotHome = ::notHome.takeIf { session.mix.isNotEmpty() })
+                        RoundType.QR_SCAN -> QrPuzzle(session.qrCode.orEmpty(), onMiss, ::roundSolved, onCantScan = ::cantScan.takeIf { session.mix.isNotEmpty() })
                         RoundType.PAIRS -> PairsPuzzle(level, ::roundSolved)
                         RoundType.PATH -> PathPuzzle(level, ::roundSolved)
                         RoundType.SLIDE -> SlidePuzzle(level, ::roundSolved)
@@ -338,8 +338,8 @@ private fun EndScreen(ending: Ending, is24Hour: Boolean, onClose: () -> Unit) {
                 is Ending.Solved -> {
                     Text("Good morning", style = ColdText.display.copy(fontSize = 54.sp), color = Sun.OnGlass)
                     Text("Solved in ${formatDuration(ending.totalMs)}", style = ColdText.bodyStrong.copy(fontSize = 18.sp), color = Sun.Glow)
-                    if (ending.away) {
-                        Text("Logged as away in History.", style = ColdText.body.copy(fontSize = 15.sp), color = Sun.OnGlass.copy(alpha = 0.82f))
+                    if (ending.noScan) {
+                        Text("Logged as no scan in History.", style = ColdText.body.copy(fontSize = 15.sp), color = Sun.OnGlass.copy(alpha = 0.82f))
                     }
                     if (ending.checks > 0) {
                         val at = LocalTime.now().plusSeconds(WakeCheck.delayMs / 1000)

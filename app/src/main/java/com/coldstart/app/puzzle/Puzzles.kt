@@ -114,18 +114,18 @@ fun roundsFor(method: WakeMethod, puzzles: List<RoundType>, hasCode: Boolean): L
     else -> puzzles + RoundType.QR_SCAN
 }
 
-/** "Not home?" on the scan round: this many puzzles replace the scan, all at the top level. */
-const val NOT_HOME_ROUNDS = 2
+/** "Can't scan now?" on the scan round: this many puzzles replace the scan, all at the top level. */
+const val CANT_SCAN_ROUNDS = 2
 
 /**
- * The scan round swapped for [NOT_HOME_ROUNDS] puzzles from [mix], for when the code is somewhere
+ * The scan round swapped for [CANT_SCAN_ROUNDS] puzzles from [mix], for when the code is somewhere
  * you aren't. Dearer than walking to the code on purpose, so in bed it's never the easy way out.
  * The first replacement can't repeat the round before it.
  */
-fun notHomeRounds(rounds: List<RoundType>, mix: List<RoundType>, rng: Random): List<RoundType> {
+fun cantScanRounds(rounds: List<RoundType>, mix: List<RoundType>, rng: Random): List<RoundType> {
     val at = rounds.indexOf(RoundType.QR_SCAN)
     if (at < 0 || mix.isEmpty()) return rounds
-    val swap = planMorning(mix, lastOpener = rounds.getOrNull(at - 1), rng = rng, rounds = NOT_HOME_ROUNDS)
+    val swap = planMorning(mix, lastOpener = rounds.getOrNull(at - 1), rng = rng, rounds = CANT_SCAN_ROUNDS)
     return rounds.take(at) + swap + rounds.drop(at + 1)
 }
 

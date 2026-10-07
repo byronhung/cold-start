@@ -60,7 +60,7 @@ class HistoryViewModel(repository: AlarmRepository, private val is24Hour: Boolea
         val took = w.endedAt?.let { formatDuration(it - w.firedAt) }
         val outcome = when (w.outcome) {
             WakeOutcome.SOLVED -> "Solved · up in $took"
-            WakeOutcome.AWAY -> "Solved away from home · up in $took"
+            WakeOutcome.NO_SCAN -> "Solved without the scan · up in $took"
             WakeOutcome.GAVE_UP -> "Gave up after $took"
             WakeOutcome.TIMED_OUT -> "Nobody answered for an hour"
             null -> "Interrupted"
@@ -77,10 +77,10 @@ class HistoryViewModel(repository: AlarmRepository, private val is24Hour: Boolea
     private fun summary(wakes: List<WakeLog>): String {
         if (wakes.isEmpty()) return "Nothing yet. Your first morning shows up here."
         val solved = wakes.count { it.outcome == WakeOutcome.SOLVED }
-        val away = wakes.count { it.outcome == WakeOutcome.AWAY }
+        val noScan = wakes.count { it.outcome == WakeOutcome.NO_SCAN }
         val gaveUp = wakes.count { it.outcome == WakeOutcome.GAVE_UP }
-        val awayText = if (away > 0) " · $away away" else ""
-        return "Last ${wakes.size}: $solved solved$awayText · $gaveUp gave up"
+        val noScanText = if (noScan > 0) " · $noScan no scan" else ""
+        return "Last ${wakes.size}: $solved solved$noScanText · $gaveUp gave up"
     }
 }
 
