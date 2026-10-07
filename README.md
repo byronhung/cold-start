@@ -2,13 +2,21 @@
 
 # Cold Start
 
-An Android alarm with one way out: solve three quick puzzles. No snooze.
+An Android alarm you can only turn off by solving puzzles, or by getting up and scanning a barcode.
+No snooze.
 
-- **Three rounds, three different puzzles, shuffled every morning.** Stroop (tap the ink colour, not
-  the word), pattern flash (tap back the cells that lit up), and odd one out (find the one shape with
+- **A few quick rounds, shuffled every morning.** Stroop (tap the ink colour or the word, whichever
+  it asks), pattern flash (tap back the cells that lit up), and odd one out (find the one shape with
   a colour + shape + size combination nothing else has).
-- **Difficulty comes from reps, not hardness.** Each round is easy. It adapts quietly to how fast
-  you've been solving.
+- **Difficulty per alarm.** Gentle (3 easy rounds), Normal (5 rounds that adapt to how fast you've
+  been solving), Hard (4 rounds at the top level). Set a default in Settings.
+- **Or scan to stop it.** Register any barcode in the house (a shampoo bottle works) and an alarm can
+  ask for it instead of, or after, the puzzles. Out and about? *Can't scan now?* swaps the scan for
+  2 hard puzzles, logged in History.
+- **Quiet while you solve.** Tapping the screen silences it; stop for 10 seconds and it's back at
+  full volume. For the alarm you forgot about that goes off on the train.
+- **Wake checks.** A few minutes after you solve it, it asks "Still awake?". Miss it and the alarm
+  rings again.
 - **Yesterday's first puzzle never opens today.**
 - **Turning the volume down doesn't help.** While it rings, the alarm volume is held up and the
   volume buttons do nothing.
@@ -16,7 +24,7 @@ An Android alarm with one way out: solve three quick puzzles. No snooze.
 
 ## Install
 
-1. Download [`apk/ColdStart-0.1.apk`](apk/ColdStart-0.1.apk) on an Android phone (Android 10 or newer).
+1. Download [`apk/ColdStart-0.2.apk`](apk/ColdStart-0.2.apk) on an Android phone (Android 10 or newer).
 2. Open it. Android will ask you to allow installing from that app (Files, Chrome, WhatsApp…). Allow it.
    It will also warn that the app isn't from the Play Store; that's expected.
 3. Open Cold Start and tap **Allow** on everything in the *Before alarms can ring* card,
