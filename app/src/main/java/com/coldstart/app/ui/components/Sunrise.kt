@@ -150,13 +150,15 @@ fun SkyBackground(
                         .nestedScroll(scrolls)
                         .pointerInput(Unit) {
                             // Final pass: children have had their go, so a consumed press was a card's.
+                            // Those never tap the sky, but they still drag once they move.
                             awaitPointerEventScope {
                                 while (true) {
                                     val change = awaitPointerEvent(PointerEventPass.Final).changes.firstOrNull() ?: continue
                                     when {
-                                        change.changedToDownIgnoreConsumed() -> if (!change.isConsumed) input.press(change.position)
-                                        change.pressed && input.down -> input.move(change.position)
-                                        !change.pressed -> input.down = false
+                                        change.changedToDownIgnoreConsumed() ->
+                                            if (change.isConsumed) input.pressOnContent(change.position, viewConfiguration.touchSlop) else input.press(change.position)
+                                        change.pressed && input.tracking -> input.move(change.position)
+                                        !change.pressed -> input.release()
                                     }
                                 }
                             }

@@ -45,6 +45,11 @@ class SceneInput {
     var pull = 0f
     var lastFrame = 0f
 
+    /** Where a press on a card started, until it moves far enough to count as a drag. */
+    private var cardPress: Offset? = null
+    private var slop = 0f
+
+    /** A press on open sky: a tap (ripples, lights) and the start of a drag. */
     fun press(at: Offset) {
         down = true
         x = at.x
@@ -53,7 +58,28 @@ class SceneInput {
         wipes += Touch(at.x, at.y, now)
     }
 
+    /**
+     * A press a card or button took. It never taps the sky (the card is opening or toggling), but
+     * once the finger moves it drags like any other: scrolling the list wipes the glass.
+     */
+    fun pressOnContent(at: Offset, touchSlop: Float) {
+        cardPress = at
+        slop = touchSlop
+    }
+
+    fun release() {
+        down = false
+        cardPress = null
+    }
+
+    val tracking: Boolean get() = down || cardPress != null
+
     fun move(at: Offset) {
+        cardPress?.let { start ->
+            if (kotlin.math.hypot(at.x - start.x, at.y - start.y) < slop) return
+            cardPress = null
+            down = true
+        }
         x = at.x
         y = at.y
         val last = wipes.lastOrNull()
@@ -64,7 +90,7 @@ class SceneInput {
 /**
  * The Plus skies' moving layer, drawn between the gradient and the screen's content.
  *
- * Ported scenes (Aurora, Monsoon) are drawn from the round-2 prototype
+ * Ported scenes (Aurora, Monsoon, Neon city) are drawn from the round-2 prototype
  * (claude.ai/artifact/3kQdAWeSjG49xjk6rHy92P) in its own units: a 300-wide phone, scaled up to the
  * real screen, so every number in the port matches the prototype's. The rest are still round 1.
  *
@@ -87,12 +113,12 @@ fun SceneLayer(sky: Sky, input: SceneInput, modifier: Modifier = Modifier) {
         when (sky.scene) {
             Scene.AURORA -> { proto(input) { w, h, scroll, k -> aurora(w, h, t, sky.phase, input, scroll, k) }; return@Canvas }
             Scene.MONSOON -> { proto(input) { w, h, scroll, k -> monsoon(w, h, t, sky.phase, input, scroll, k) }; return@Canvas }
+            Scene.NEON -> { proto(input) { w, h, scroll, k -> neon(w, h, t, sky.phase, input, scroll, k) }; return@Canvas }
             else -> Unit
         }
         // Round-1 scenes, until each is ported.
         val fx = when (sky.phase) { Phase.NIGHT -> 0.9f; Phase.DAWN -> 0.55f; Phase.DAY -> 0.25f }
         when (sky.scene) {
-            Scene.NEON -> neon(t, sky.phase)
             Scene.COAST -> coast(t, sky.phase, fx)
             else -> Unit
         }
@@ -146,46 +172,6 @@ internal fun DrawScope.stars(w: Float, maxY: Float, t: Float, alpha: Float, dy: 
         val s = STARS[i]
         val a = alpha * (0.45f + 0.55f * (0.5f + 0.5f * sin(t * s.speed + s.phase))) * (1 - s.y * 0.6f)
         drawCircle(Color(0xFFFFFAF0).copy(alpha = a.coerceIn(0f, 1f)), s.r * 0.75f, Offset(s.x * w, s.y * maxY + dy))
-    }
-}
-
-// ---------- neon city: a skyline whose windows switch off as day comes ----------
-
-private val buildingHeights = listOf(0.23f, 0.29f, 0.18f, 0.26f, 0.21f, 0.27f, 0.2f)
-
-private fun DrawScope.neon(t: Float, phase: Phase) {
-    val gap = size.width * 0.016f
-    val n = buildingHeights.size
-    val w = (size.width - gap * (n + 1)) / n
-    val body = if (phase == Phase.DAY) Color(0xFFB98FA8) else Color(0xFF140829)
-    buildingHeights.forEachIndexed { bi, hf ->
-        val h = size.height * hf
-        val left = gap + bi * (w + gap)
-        val top = size.height - h
-        drawRoundRect(body, Offset(left, top), Size(w, h + 8f), androidx.compose.ui.geometry.CornerRadius(8f))
-        // Three columns of windows from the roof down.
-        val pad = w * 0.12f
-        val cols = 3
-        val ww = (w - pad * 2 - pad * (cols - 1)) / cols
-        val wh = size.height * 0.0115f
-        val rows = ((h - pad * 2) / (wh + pad)).toInt()
-        for (row in 0 until rows) for (c in 0 until cols) {
-            val k = row * cols + c
-            val on = when (phase) {
-                Phase.NIGHT -> true
-                Phase.DAWN -> (k + bi) % 3 == 0
-                Phase.DAY -> false
-            }
-            // Each lit window goes dark for the last 30% of its own 6 s loop.
-            val blinkOff = ((t + (k * 1.7f + bi * 2.3f)) % 6f) / 6f > 0.71f
-            val o = Offset(left + pad + c * (ww + pad), top + pad + row * (wh + pad))
-            if (on && !blinkOff) {
-                drawRect(Color(0x55FF9AD5), o - Offset(2f, 2f), Size(ww + 4f, wh + 4f))
-                drawRect(Color(0xFFFFD27A), o, Size(ww, wh))
-            } else {
-                drawRect(Color.White.copy(alpha = 0.08f), o, Size(ww, wh))
-            }
-        }
     }
 }
 
