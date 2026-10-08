@@ -21,7 +21,6 @@ import com.coldstart.app.ui.theme.Sky
 import kotlin.math.PI
 import kotlin.math.floor
 import kotlin.math.sin
-import kotlin.random.Random
 
 /** One touch on open sky, in px and scene seconds. */
 class Touch(val x: Float, val y: Float, val t: Float)
@@ -65,7 +64,7 @@ class SceneInput {
 /**
  * The Plus skies' moving layer, drawn between the gradient and the screen's content.
  *
- * Ported scenes (Aurora so far) are drawn from the round-2 prototype
+ * Ported scenes (Aurora, Monsoon) are drawn from the round-2 prototype
  * (claude.ai/artifact/3kQdAWeSjG49xjk6rHy92P) in its own units: a 300-wide phone, scaled up to the
  * real screen, so every number in the port matches the prototype's. The rest are still round 1.
  *
@@ -82,14 +81,17 @@ fun SceneLayer(sky: Sky, input: SceneInput, modifier: Modifier = Modifier) {
     Canvas(modifier) {
         val t = seconds
         input.now = t
-        if (sky.scene == Scene.AURORA) {
-            proto(input) { w, h, scroll, k -> aurora(w, h, t, sky.phase, input, scroll, k) }
-            return@Canvas
+        // Touches only matter for a few seconds; don't let them pile up.
+        input.taps.removeAll { t - it.t > 10f }
+        input.wipes.removeAll { t - it.t > 10f }
+        when (sky.scene) {
+            Scene.AURORA -> { proto(input) { w, h, scroll, k -> aurora(w, h, t, sky.phase, input, scroll, k) }; return@Canvas }
+            Scene.MONSOON -> { proto(input) { w, h, scroll, k -> monsoon(w, h, t, sky.phase, input, scroll, k) }; return@Canvas }
+            else -> Unit
         }
         // Round-1 scenes, until each is ported.
         val fx = when (sky.phase) { Phase.NIGHT -> 0.9f; Phase.DAWN -> 0.55f; Phase.DAY -> 0.25f }
         when (sky.scene) {
-            Scene.MONSOON -> monsoon(t, fx, sky.isLight)
             Scene.NEON -> neon(t, sky.phase)
             Scene.COAST -> coast(t, sky.phase, fx)
             else -> Unit
@@ -101,13 +103,19 @@ fun SceneLayer(sky: Sky, input: SceneInput, modifier: Modifier = Modifier) {
 private const val PROTO_W = 300f
 
 /**
+ * Parallax stops after this much scroll (prototype units, about the prototype list's full scroll),
+ * so a long alarm list can't drag mountains or buildings off their ground.
+ */
+private const val MAX_PARALLAX_SCROLL = 360f
+
+/**
  * Draws in prototype units: [block] gets the width (300), the height in those units, the scroll
  * in those units, and k (prototype px → screen px) for converting touches.
  */
 private inline fun DrawScope.proto(input: SceneInput, block: DrawScope.(w: Float, h: Float, scroll: Float, k: Float) -> Unit) {
     val k = size.width / PROTO_W
     withTransform({ scale(k, k, Offset.Zero) }) {
-        block(PROTO_W, size.height / k, input.scroll / k, k)
+        block(PROTO_W, size.height / k, (input.scroll / k).coerceAtMost(MAX_PARALLAX_SCROLL), k)
     }
 }
 
@@ -139,40 +147,6 @@ internal fun DrawScope.stars(w: Float, maxY: Float, t: Float, alpha: Float, dy: 
         val a = alpha * (0.45f + 0.55f * (0.5f + 0.5f * sin(t * s.speed + s.phase))) * (1 - s.y * 0.6f)
         drawCircle(Color(0xFFFFFAF0).copy(alpha = a.coerceIn(0f, 1f)), s.r * 0.75f, Offset(s.x * w, s.y * maxY + dy))
     }
-}
-
-// ---------- monsoon: slanted rain, a mist at the bottom, the odd distant flash ----------
-
-/** Fixed drops, so the rain doesn't reshuffle on every frame. x, start offset, speed, length. */
-private val drops = Random(7).let { r -> List(90) { floatArrayOf(r.nextFloat(), r.nextFloat(), 0.8f + r.nextFloat() * 0.5f, 0.6f + r.nextFloat() * 0.6f) } }
-
-private fun DrawScope.monsoon(t: Float, fx: Float, light: Boolean) {
-    drawRect(
-        Brush.verticalGradient(0.55f to Color.Transparent, 1f to Color(0x59F0F5FA)),
-        size = size,
-    )
-    // On a pale day sky white rain vanishes, so it turns slate.
-    val rain = if (light) Color(0x4D4A5A6C) else Color(0x38DCEBFF)
-    val fall = size.height * 1.9f // per second: the mockup's 120 px every half second, scaled
-    val len = size.height * 0.028f
-    val dx = len * 0.27f // 105° slant
-    for (d in drops) {
-        val travel = (d[1] * size.height * 1.2f + t * fall * d[2]) % (size.height * 1.2f) - size.height * 0.1f
-        // Drifts left as it falls (the 105° slant), wrapping round the sides.
-        val x = d[0] * size.width - travel * 0.27f
-        val wrapped = ((x % size.width) + size.width) % size.width
-        drawLine(rain, Offset(wrapped, travel), Offset(wrapped - dx * d[3], travel + len * d[3]), strokeWidth = 1.5f, cap = StrokeCap.Round)
-    }
-    // A 9 s loop with a double flicker near the end: 92% .35, 93% .08, 94% .28.
-    val p = (t % 9f) / 9f
-    val flash = when {
-        p < 0.91f || p > 0.95f -> 0f
-        p < 0.92f -> (p - 0.91f) / 0.01f * 0.35f
-        p < 0.93f -> 0.35f - (p - 0.92f) / 0.01f * 0.27f
-        p < 0.94f -> 0.08f + (p - 0.93f) / 0.01f * 0.20f
-        else -> 0.28f - (p - 0.94f) / 0.01f * 0.28f
-    }
-    if (flash > 0f) drawRect(Color(0xFFE8F0FF).copy(alpha = flash * fx), size = size)
 }
 
 // ---------- neon city: a skyline whose windows switch off as day comes ----------
