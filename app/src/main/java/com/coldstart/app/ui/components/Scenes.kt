@@ -19,78 +19,127 @@ import com.coldstart.app.ui.theme.Phase
 import com.coldstart.app.ui.theme.Scene
 import com.coldstart.app.ui.theme.Sky
 import kotlin.math.PI
+import kotlin.math.floor
 import kotlin.math.sin
 import kotlin.random.Random
 
+/** One touch on open sky, in px and scene seconds. */
+class Touch(val x: Float, val y: Float, val t: Float)
+
 /**
- * The Plus skies' moving layer, drawn between the gradient and the screen's content. Ported from
- * the mockup's CSS (claude.ai/artifact/RJ5hJG9ZUmeCjKF3fH7S6f, "Five skies"): same colours, sizes
- * as fractions of the mockup's 250 × 520 phone, same loop lengths.
+ * What a scene knows about the screen it sits behind: how far the content has scrolled, and where
+ * the sky was touched. Plain fields, written by [SkyBackground]'s input handlers and read while
+ * drawing: the frame clock redraws every frame anyway, so none of this needs to be snapshot state.
+ */
+class SceneInput {
+    /** Total scroll of whatever list sits on top, in px. Layers move by a fraction of it. */
+    var scroll = 0f
+    var down = false
+    var x = 0f
+    var y = 0f
+    /** Scene seconds at the last frame, so touches are stamped on the same clock as the drawing. */
+    var now = 0f
+    val taps = ArrayList<Touch>()
+    val wipes = ArrayList<Touch>()
+
+    /** Aurora's pull toward the finger, eased in while held and out after release. */
+    var pull = 0f
+    var lastFrame = 0f
+
+    fun press(at: Offset) {
+        down = true
+        x = at.x
+        y = at.y
+        taps += Touch(at.x, at.y, now)
+        wipes += Touch(at.x, at.y, now)
+    }
+
+    fun move(at: Offset) {
+        x = at.x
+        y = at.y
+        val last = wipes.lastOrNull()
+        if (last == null || kotlin.math.hypot(last.x - at.x, last.y - at.y) > 8f) wipes += Touch(at.x, at.y, now)
+    }
+}
+
+/**
+ * The Plus skies' moving layer, drawn between the gradient and the screen's content.
  *
- * Everything runs off one clock in seconds, so each effect is a pure function of time and nothing
- * piles up across recompositions. Sunrise has no layer: its sun glow lives in [SkyBackground].
+ * Ported scenes (Aurora so far) are drawn from the round-2 prototype
+ * (claude.ai/artifact/3kQdAWeSjG49xjk6rHy92P) in its own units: a 300-wide phone, scaled up to the
+ * real screen, so every number in the port matches the prototype's. The rest are still round 1.
+ *
+ * Everything runs off one clock in seconds, so each effect is a function of time and nothing piles
+ * up across recompositions. Sunrise has no layer: its sun glow lives in [SkyBackground].
  */
 @Composable
-fun SceneLayer(sky: Sky, modifier: Modifier = Modifier) {
+fun SceneLayer(sky: Sky, input: SceneInput, modifier: Modifier = Modifier) {
     if (sky.scene == Scene.SUN) return
     val seconds by produceState(0f) {
         val start = withFrameMillis { it }
         while (true) withFrameMillis { value = (it - start) / 1000f }
     }
     Canvas(modifier) {
-        // How strongly night effects show: full at night, half at dawn, faint by day (mockup's fx).
+        val t = seconds
+        input.now = t
+        if (sky.scene == Scene.AURORA) {
+            proto(input) { w, h, scroll, k -> aurora(w, h, t, sky.phase, input, scroll, k) }
+            return@Canvas
+        }
+        // Round-1 scenes, until each is ported.
         val fx = when (sky.phase) { Phase.NIGHT -> 0.9f; Phase.DAWN -> 0.55f; Phase.DAY -> 0.25f }
         when (sky.scene) {
-            Scene.AURORA -> aurora(seconds, fx)
-            Scene.MONSOON -> monsoon(seconds, fx, sky.isLight)
-            Scene.NEON -> neon(seconds, sky.phase)
-            Scene.COAST -> coast(seconds, sky.phase, fx)
-            Scene.SUN -> Unit
+            Scene.MONSOON -> monsoon(t, fx, sky.isLight)
+            Scene.NEON -> neon(t, sky.phase)
+            Scene.COAST -> coast(t, sky.phase, fx)
+            else -> Unit
         }
     }
 }
 
-/** 0..1..0 over [period] seconds, eased like CSS `alternate`. */
-private fun swing(t: Float, period: Float, offset: Float = 0f): Float =
-    ((1 - kotlin.math.cos(2 * PI * (t + offset) / period)) / 2).toFloat()
-
-// ---------- aurora: two soft ribbons swaying across the top ----------
-
-private fun DrawScope.aurora(t: Float, fx: Float) {
-    ribbon(
-        y = size.height * 0.10f, colors = listOf(Color(0xFF3DFFB0), Color(0xFF3DE0FF)),
-        sway = swing(t, 22f), tilt = 1f, alpha = fx,
-    )
-    ribbon(
-        y = size.height * 0.24f, colors = listOf(Color(0xFF9B7BFF), Color(0xFFFF7BD5)),
-        sway = 1 - swing(t, 28f), tilt = -1f, alpha = fx * 0.7f,
-    )
-}
+/** The prototype's phone was 300 px wide. */
+private const val PROTO_W = 300f
 
 /**
- * A ribbon is a row of wide, soft blobs along a gentle wave: the mockup blurs a band with CSS,
- * which Compose can't do before Android 12, so the softness comes from radial gradients instead.
+ * Draws in prototype units: [block] gets the width (300), the height in those units, the scroll
+ * in those units, and k (prototype px → screen px) for converting touches.
  */
-private fun DrawScope.ribbon(y: Float, colors: List<Color>, sway: Float, tilt: Float, alpha: Float) {
-    val n = 7
-    val shiftX = (sway - 0.5f) * 0.24f * size.width
-    for (i in 0 until n) {
-        val f = i / (n - 1f)
-        // Fade in and out at the ends, like the mockup's transparent gradient edges.
-        val edge = sin(PI * f).toFloat()
-        val c = lerp(colors[0], colors[1], f).copy(alpha = 0.55f * alpha * edge)
-        val cx = -0.2f * size.width + f * 1.4f * size.width + shiftX
-        val cy = y + tilt * (f - 0.5f) * 0.12f * size.height * (sway - 0.5f) * 2 + sin(f * 2 * PI).toFloat() * 0.02f * size.height
-        val r = size.width * 0.16f
-        withTransform({ scale(2.2f, 1f, Offset(cx, cy)) }) {
-            drawCircle(Brush.radialGradient(listOf(c, Color.Transparent), center = Offset(cx, cy), radius = r), r, Offset(cx, cy))
-        }
+private inline fun DrawScope.proto(input: SceneInput, block: DrawScope.(w: Float, h: Float, scroll: Float, k: Float) -> Unit) {
+    val k = size.width / PROTO_W
+    withTransform({ scale(k, k, Offset.Zero) }) {
+        block(PROTO_W, size.height / k, input.scroll / k, k)
     }
 }
 
-private fun lerp(a: Color, b: Color, f: Float) = Color(
-    a.red + (b.red - a.red) * f, a.green + (b.green - a.green) * f, a.blue + (b.blue - a.blue) * f, 1f,
-)
+// ---------- shared by the ported scenes ----------
+
+/** The prototype's hash: the same pseudo-random numbers, so stars and ridges land where they did there. */
+internal fun hash(n: Double): Float {
+    val s = sin(n * 12.9898 + 78.233) * 43758.5453
+    return (s - floor(s)).toFloat()
+}
+
+internal fun hash(n: Int): Float = hash(n.toDouble())
+
+/** Night effects at full strength, half at dawn, faint by day (the prototype's PH table). */
+internal val Phase.fx: Float get() = when (this) { Phase.NIGHT -> 1f; Phase.DAWN -> 0.5f; Phase.DAY -> 0.14f }
+internal val Phase.starAlpha: Float get() = when (this) { Phase.NIGHT -> 1f; Phase.DAWN -> 0.3f; Phase.DAY -> 0f }
+
+private class Star(val x: Float, val y: Float, val r: Float, val phase: Float, val speed: Float)
+
+private val STARS = List(160) { i ->
+    Star(hash(i), hash(i + 300), 0.5f + hash(i + 600) * 1.3f, hash(i + 900) * 2 * PI.toFloat(), 0.6f + hash(i + 1200) * 2.4f)
+}
+
+/** Twinkling stars in the top [maxY] of the sky, nudged by [dy] for parallax. */
+internal fun DrawScope.stars(w: Float, maxY: Float, t: Float, alpha: Float, dy: Float, count: Int = STARS.size) {
+    if (alpha <= 0.01f) return
+    for (i in 0 until count) {
+        val s = STARS[i]
+        val a = alpha * (0.45f + 0.55f * (0.5f + 0.5f * sin(t * s.speed + s.phase))) * (1 - s.y * 0.6f)
+        drawCircle(Color(0xFFFFFAF0).copy(alpha = a.coerceIn(0f, 1f)), s.r * 0.75f, Offset(s.x * w, s.y * maxY + dy))
+    }
+}
 
 // ---------- monsoon: slanted rain, a mist at the bottom, the odd distant flash ----------
 

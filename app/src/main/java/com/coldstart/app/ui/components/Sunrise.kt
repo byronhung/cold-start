@@ -56,6 +56,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -100,14 +105,31 @@ import kotlin.math.ceil
  * Every Sunrise screen sits on this: the sky gradient, a sun glowing at the bottom that slowly
  * breathes, and [LocalSky] set so everything inside picks matching ink and glass.
  * [drift]: the ringing screen's sky slowly moves, like the prototype's.
+ * [scene]: draw the theme's moving scene (Plus skies). The ringing screen turns it off, so nothing
+ * competes with the puzzle.
+ *
+ * The scene follows the content: scrolling anything inside moves its layers (read through nested
+ * scroll, so no screen has to report it), and touches on open sky reach it. A touch that a card,
+ * toggle or button has already taken is left alone.
  */
 @Composable
 fun SkyBackground(
     sky: Sky,
     modifier: Modifier = Modifier,
     drift: Boolean = false,
+    scene: Boolean = true,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val input = remember { SceneInput() }
+    val scrolls = remember {
+        object : NestedScrollConnection {
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                input.scroll = (input.scroll - consumed.y).coerceAtLeast(0f)
+                return Offset.Zero
+            }
+        }
+    }
+    val sceneOn = scene && sky.scene != Scene.SUN
     CompositionLocalProvider(LocalSky provides sky) {
         val t = rememberInfiniteTransition(label = "sky")
         val breathe by t.animateFloat(1f, 1.08f, infiniteRepeatable(tween(4_500, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "sun")
@@ -119,7 +141,25 @@ fun SkyBackground(
                     val h = size.height * if (drift) 1.4f else 1f
                     val y0 = -(h - size.height) * shift
                     drawRect(Brush.verticalGradient(0f to sky.top, 0.58f to sky.mid, 1f to sky.bottom, startY = y0, endY = y0 + h))
-                },
+                }
+                .then(
+                    if (!sceneOn) Modifier
+                    else Modifier
+                        .nestedScroll(scrolls)
+                        .pointerInput(Unit) {
+                            // Final pass: children have had their go, so a consumed press was a card's.
+                            awaitPointerEventScope {
+                                while (true) {
+                                    val change = awaitPointerEvent(PointerEventPass.Final).changes.firstOrNull() ?: continue
+                                    when {
+                                        change.changedToDownIgnoreConsumed() -> if (!change.isConsumed) input.press(change.position)
+                                        change.pressed && input.down -> input.move(change.position)
+                                        !change.pressed -> input.down = false
+                                    }
+                                }
+                            }
+                        },
+                ),
         ) {
             if (sky.scene == Scene.SUN) Box(
                 Modifier
@@ -136,7 +176,7 @@ fun SkyBackground(
                         CircleShape,
                     ),
             )
-            SceneLayer(sky, Modifier.fillMaxSize())
+            if (sceneOn) SceneLayer(sky, input, Modifier.fillMaxSize())
             content()
         }
     }

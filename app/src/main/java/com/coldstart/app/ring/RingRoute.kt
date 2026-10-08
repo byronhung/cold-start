@@ -101,7 +101,7 @@ fun RingRoute(controller: RingController, is24Hour: Boolean, onClose: () -> Unit
     // Set the moment the ring ends here, so the closing screen shows instead of an instant exit.
     var ending by remember { mutableStateOf<Ending?>(null) }
 
-    SkyBackground(LocalSkyTheme.current.dawn, drift = true) {
+    SkyBackground(LocalSkyTheme.current.dawn, drift = true, scene = false) {
         val finished = ending
         when {
             finished != null -> EndScreen(finished, is24Hour, onClose)
