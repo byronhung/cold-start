@@ -23,5 +23,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "cold-start"
+rootProject.name = "first-light"
 include(":app")

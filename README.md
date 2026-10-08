@@ -1,8 +1,8 @@
-<p align="center"><img src="icons/cold-start-logo.svg" width="120" alt="First Light logo"></p>
+<p align="center"><img src="icons/first-light-logo.svg" width="120" alt="First Light logo"></p>
 
 # First Light
 
-*Formerly Cold Start.* On Google Play (soon) as **First Light: QR & Puzzle Alarm**.
+On Google Play (soon) as **First Light: QR & Puzzle Alarm**.
 
 An Android alarm you can only turn off by solving puzzles, or by getting up and scanning a barcode.
 No snooze.
@@ -32,7 +32,7 @@ touch: Aurora, Monsoon, Neon city and Coast.*
 
 ## Install
 
-1. Download [`apk/ColdStart-0.3.apk`](apk/ColdStart-0.3.apk) on an Android phone (Android 10 or newer).
+1. Download [`apk/FirstLight-0.4.apk`](apk/FirstLight-0.4.apk) on an Android phone (Android 10 or newer).
 2. Open it. Android will ask you to allow installing from that app (Files, Chrome, WhatsApp…). Allow it.
    It will also warn that the app isn't from the Play Store; that's expected.
 3. Open First Light and tap **Allow** on everything in the *Before alarms can ring* card,
