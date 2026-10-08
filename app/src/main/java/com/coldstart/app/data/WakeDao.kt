@@ -41,4 +41,8 @@ interface WakeDao {
 
     @Query("SELECT * FROM wake_log ORDER BY firedAt DESC LIMIT :limit")
     fun observeRecent(limit: Int): Flow<List<WakeLog>>
+
+    /** Wakes that rang in [from, to), epoch millis: one month of the calendar. */
+    @Query("SELECT * FROM wake_log WHERE firedAt >= :from AND firedAt < :to")
+    fun observeBetween(from: Long, to: Long): Flow<List<WakeLog>>
 }

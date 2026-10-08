@@ -42,6 +42,8 @@ class AlarmRepository(
 
     val alarms: Flow<List<Alarm>> = alarmDao.observeAll()
     val recentWakes: Flow<List<WakeLog>> = wakeDao.observeRecent(60)
+
+    fun wakesBetween(range: LongRange): Flow<List<WakeLog>> = wakeDao.observeBetween(range.first, range.last + 1)
     val settings: Flow<AppSettings?> = wakeDao.observeSettings()
 
     suspend fun setWakeCode(code: String?) = editSettings { it.copy(wakeCode = code?.trim()?.ifEmpty { null }) }

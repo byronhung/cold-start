@@ -26,7 +26,16 @@ data class Sky(
     val ink: Color get() = if (isLight) Color(0xFF2A1D3A) else Color(0xFFFFF6EC)
     val dim: Color get() = ink.copy(alpha = if (isLight) 0.72f else 0.74f)
     val mute: Color get() = ink.copy(alpha = 0.55f)
-    val card: Color get() = if (isLight) Color.White.copy(alpha = 0.55f) else Color.White.copy(alpha = 0.09f)
+    /**
+     * Glass for cards. Sunrise's sky is smooth, so clear glass reads fine. Plus skies have scenes
+     * (lit windows, rain, glints) that fight with text, so their glass is frosted: the sky's own
+     * darkest colour (white by day) at 65%, which keeps the scene visible but softened.
+     */
+    val card: Color get() = when {
+        scene == Scene.SUN -> if (isLight) Color.White.copy(alpha = 0.55f) else Color.White.copy(alpha = 0.09f)
+        isLight -> Color.White.copy(alpha = 0.65f)
+        else -> top.copy(alpha = 0.65f)
+    }
     val cardEdge: Color get() = if (isLight) Color.White.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.14f)
     val chip: Color get() = if (isLight) Color(0xFF2A1D3A).copy(alpha = 0.08f) else Color.White.copy(alpha = 0.12f)
     val track: Color get() = if (isLight) Color(0xFF2A1D3A).copy(alpha = 0.18f) else Color.White.copy(alpha = 0.18f)

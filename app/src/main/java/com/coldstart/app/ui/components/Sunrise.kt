@@ -109,6 +109,8 @@ import kotlin.math.ceil
  * [drift]: the ringing screen's sky slowly moves, like the prototype's.
  * [scene]: draw the theme's moving scene (Plus skies). The ringing screen turns it off, so nothing
  * competes with the puzzle.
+ * [calm]: draw the scene at half strength, for screens that are mostly reading (History, Settings,
+ * the editor). The alarm list keeps it at full.
  *
  * The scene follows the content: scrolling anything inside moves its layers (read through nested
  * scroll, so no screen has to report it), and touches on open sky reach it. A touch that a card,
@@ -120,6 +122,7 @@ fun SkyBackground(
     modifier: Modifier = Modifier,
     drift: Boolean = false,
     scene: Boolean = true,
+    calm: Boolean = false,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val input = remember { SceneInput() }
@@ -180,7 +183,7 @@ fun SkyBackground(
                         CircleShape,
                     ),
             )
-            if (sceneOn) SceneLayer(sky, input, Modifier.fillMaxSize())
+            if (sceneOn) SceneLayer(sky, input, Modifier.fillMaxSize().graphicsLayer { alpha = if (calm) 0.5f else 1f })
             content()
         }
     }

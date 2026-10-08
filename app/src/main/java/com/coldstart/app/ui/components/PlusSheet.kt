@@ -79,8 +79,8 @@ fun BoxScope.PlusSheet(reason: String?, onDismiss: () -> Unit) {
             Text("COLD START PLUS", style = ColdText.label, color = Sun.ToggleLight)
             Text(shown, style = ColdText.display.copy(fontSize = 28.sp, lineHeight = 32.sp), color = Sun.OnGlass)
             Text(
-                "Plus adds Memory pairs, Connect the path and Slide out, four new skies, and your " +
-                    "month, speed and weekly stats. Waking up always stays free.",
+                "Plus adds Memory pairs, Connect the path and Slide out, and four new skies you can " +
+                    "touch. Waking up, and your month of mornings, always stay free.",
                 style = ColdText.body.copy(fontSize = 15.sp),
                 color = Sun.OnGlass.copy(alpha = 0.82f),
             )

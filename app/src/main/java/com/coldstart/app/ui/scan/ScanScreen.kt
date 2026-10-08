@@ -63,7 +63,7 @@ fun ScanScreen(onCode: (String) -> Unit, onBack: () -> Unit) {
     var torch by remember { mutableStateOf(false) }
     var done by remember { mutableStateOf(false) }
 
-    SkyBackground(LocalSkyTheme.current.night) {
+    SkyBackground(LocalSkyTheme.current.night, calm = true) {
         val sky = LocalSky.current
         Column(
             Modifier

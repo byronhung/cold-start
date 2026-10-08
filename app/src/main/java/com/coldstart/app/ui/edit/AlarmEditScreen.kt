@@ -71,7 +71,7 @@ import java.time.LocalTime
 fun AlarmEditScreen(viewModel: AlarmEditViewModel, onScanForCode: () -> Unit, onDone: () -> Unit) {
     val wakeCode by viewModel.wakeCode.collectAsStateWithLifecycle()
     val defaultDifficulty by viewModel.defaultDifficulty.collectAsStateWithLifecycle()
-    SkyBackground(LocalSkyTheme.current.forHour(LocalTime.now().hour)) {
+    SkyBackground(LocalSkyTheme.current.forHour(LocalTime.now().hour), calm = true) {
         val draft = viewModel.draft ?: return@SkyBackground
         AlarmEditContent(
             draft = draft,

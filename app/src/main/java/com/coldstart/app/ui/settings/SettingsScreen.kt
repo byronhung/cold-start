@@ -135,7 +135,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onScan: () -> Unit, onBack: () 
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     var plusReason by remember { mutableStateOf<String?>(null) }
     var mixNote by remember { mutableStateOf<String?>(null) }
-    SkyBackground(LocalSkyTheme.current.night) {
+    SkyBackground(LocalSkyTheme.current.night, calm = true) {
         val sky = LocalSky.current
         Column(
             Modifier
@@ -156,7 +156,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onScan: () -> Unit, onBack: () 
 
             val current = ui
             if (current != null) {
-                if (!current.isPlus) PlusTeaser { plusReason = "Three more puzzles, four new skies and your stats." }
+                if (!current.isPlus) PlusTeaser { plusReason = "Three more puzzles and four new skies." }
 
                 GlassCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -431,7 +431,7 @@ private fun PlusTeaser(onClick: () -> Unit) {
     ) {
         Column(Modifier.weight(1f)) {
             Text("Cold Start Plus", style = ColdText.bodyStrong, color = sky.ink)
-            Text("3 puzzles, 4 skies, your stats. Pay once.", style = ColdText.caption, color = sky.dim)
+            Text("3 puzzles and 4 skies. Pay once.", style = ColdText.caption, color = sky.dim)
         }
         Text("See", style = ColdText.bodyStrong, color = Sun.ToggleLight)
     }
