@@ -32,7 +32,7 @@ touch: Aurora, Monsoon, Neon city and Coast.*
 
 ## Install
 
-1. Download [`apk/FirstLight-0.4.apk`](apk/FirstLight-0.4.apk) on an Android phone (Android 10 or newer).
+1. Download [`apk/FirstLight-0.5.apk`](apk/FirstLight-0.5.apk) on an Android phone (Android 10 or newer).
 2. Open it. Android will ask you to allow installing from that app (Files, Chrome, WhatsApp…). Allow it.
    It will also warn that the app isn't from the Play Store; that's expected.
 3. Open First Light and tap **Allow** on everything in the *Before alarms can ring* card,
