@@ -189,7 +189,7 @@ private fun ColumnScope.TryOne(next: () -> Unit) {
     ) {
         PuzzleGlass {
             if (!solved) StroopPuzzle(Levels.MIN, onMiss = { misses++ }, onSolved = { solved = true })
-            else Text("That's it. A morning is a few of these, each a different kind.", style = AppText.bodyStrong, color = Sun.Glow, textAlign = TextAlign.Center)
+            else Text("Nice. That's one round.", style = AppText.bodyStrong, color = Sun.Glow, textAlign = TextAlign.Center)
         }
         if (!solved && misses > 0) {
             Text("Read what it asks: the ink colour, or the word.", style = AppText.caption, color = LocalSky.current.dim)

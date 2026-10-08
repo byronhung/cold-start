@@ -26,6 +26,7 @@ import com.byronhung.firstlight.puzzle.Preset
 import com.byronhung.firstlight.puzzle.effectiveMix
 import com.byronhung.firstlight.puzzle.parseMix
 import com.byronhung.firstlight.ui.components.PlusSheet
+import com.byronhung.firstlight.ui.plus.PuzzlePreviewSheet
 import com.byronhung.firstlight.ui.components.Segmented
 import com.byronhung.firstlight.ui.components.SpringToggle
 import com.byronhung.firstlight.ui.components.springClick
@@ -131,9 +132,17 @@ class SettingsViewModel(private val repository: AlarmRepository) : ViewModel() {
 }
 
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel, onScan: () -> Unit, onHelp: () -> Unit, onBack: () -> Unit) {
+fun SettingsScreen(
+    viewModel: SettingsViewModel,
+    onScan: () -> Unit,
+    onHelp: () -> Unit,
+    onPreviewSky: (SkyTheme) -> Unit,
+    onBack: () -> Unit,
+) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     var plusReason by remember { mutableStateOf<String?>(null) }
+    // A locked Plus puzzle being tried.
+    var trying by remember { mutableStateOf<CatalogPuzzle?>(null) }
     var mixNote by remember { mutableStateOf<String?>(null) }
     SkyBackground(LocalSkyTheme.current.night, calm = true) {
         val sky = LocalSky.current
@@ -174,7 +183,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onScan: () -> Unit, onHelp: () 
                                         modifier = Modifier.weight(1f),
                                         onTap = {
                                             when {
-                                                entry.plus && !current.isPlus -> plusReason = "${entry.name} is part of First Light Plus."
+                                                entry.plus && !current.isPlus -> if (entry.type != null) trying = entry else plusReason = "${entry.name} is part of First Light Plus."
                                                 entry.type == null -> mixNote = "${entry.name} is coming soon."
                                                 !viewModel.toggle(entry.type) -> mixNote = "At least $MIN_MIX stay on, so mornings never just alternate."
                                                 else -> mixNote = null
@@ -186,7 +195,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onScan: () -> Unit, onHelp: () 
                         }
                         Text(
                             mixNote ?: if (current.isPlus) "Every alarm draws from these. At least $MIN_MIX stay on."
-                            else "Every alarm draws from these three. Plus adds three more to mix in.",
+                            else "Every alarm draws from these three. Tap a locked one to try a round.",
                             style = AppText.caption.copy(fontSize = 12.5.sp),
                             color = sky.dim,
                         )
@@ -220,7 +229,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onScan: () -> Unit, onHelp: () 
                                     selected = theme == current.theme,
                                     locked = locked,
                                     onTap = {
-                                        if (locked) plusReason = "${theme.label} is a Plus sky." else viewModel.setTheme(theme)
+                                        if (locked) onPreviewSky(theme) else viewModel.setTheme(theme)
                                     },
                                 )
                             }
@@ -296,6 +305,15 @@ fun SettingsScreen(viewModel: SettingsViewModel, onScan: () -> Unit, onHelp: () 
             }
         }
 
+        PuzzlePreviewSheet(
+            type = trying?.type,
+            name = trying?.name.orEmpty(),
+            onGetPlus = {
+                plusReason = "${trying?.name} is part of First Light Plus."
+                trying = null
+            },
+            onDismiss = { trying = null },
+        )
         PlusSheet(reason = plusReason, onDismiss = { plusReason = null })
     }
 }
@@ -375,6 +393,7 @@ private fun MixTile(entry: CatalogPuzzle, on: Boolean, isPlus: Boolean, modifier
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(entry.name, style = AppText.chip.copy(fontSize = 12.sp), color = sky.ink.copy(alpha = if (locked || soon) 0.55f else 1f))
             if (soon) Text("Coming soon", style = AppText.chip.copy(fontSize = 10.sp), color = sky.mute)
+            if (locked) Text("Try it", style = AppText.chip.copy(fontSize = 10.5.sp), color = Sun.ToggleLight)
         }
         if (locked) {
             Icon(SunIcons.Lock, contentDescription = null, tint = Sun.ToggleLight, modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).size(12.dp))

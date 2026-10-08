@@ -4,6 +4,8 @@ import android.os.Bundle
 import android.text.format.DateFormat
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import com.byronhung.firstlight.ui.theme.SkyTheme
+import com.byronhung.firstlight.ui.plus.SkyPreviewScreen
 import com.byronhung.firstlight.ui.welcome.WelcomeScreen
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.activity.enableEdgeToEdge
@@ -99,8 +101,15 @@ class MainActivity : ComponentActivity() {
                             viewModel = vm,
                             onScan = { nav.navigate("scan") },
                             onHelp = { nav.navigate("welcome?replay=true") },
+                            onPreviewSky = { nav.navigate("sky/${it.code}") },
                             onBack = { nav.popBackStack() },
                         )
+                    }
+                    composable(
+                        route = "sky/{code}",
+                        arguments = listOf(navArgument("code") { type = NavType.IntType }),
+                    ) { entry ->
+                        SkyPreviewScreen(SkyTheme.of(entry.arguments?.getInt("code") ?: 0), onBack = { nav.popBackStack() })
                     }
                     composable(
                         route = "welcome?replay={replay}",
