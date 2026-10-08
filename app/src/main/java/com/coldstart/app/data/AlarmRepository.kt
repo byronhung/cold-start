@@ -14,6 +14,7 @@ import com.coldstart.app.puzzle.encodeMix
 import com.coldstart.app.puzzle.parseMix
 import com.coldstart.app.puzzle.WakeMethod
 import com.coldstart.app.puzzle.roundsFor
+import com.coldstart.app.ui.theme.SkyTheme
 import com.coldstart.app.puzzle.planMorning
 import com.coldstart.app.ring.RingSession
 import com.coldstart.app.ring.RoundResultDraft
@@ -51,6 +52,8 @@ class AlarmRepository(
 
     /** Until Google Play Billing exists (chunk P11), only the debug switch in Settings calls this. */
     suspend fun setPlus(on: Boolean) = editSettings { it.copy(isPlus = on) }
+
+    suspend fun setTheme(theme: SkyTheme) = editSettings { it.copy(theme = theme.code) }
 
     private suspend fun editSettings(change: (AppSettings) -> AppSettings) = mutex.withLock {
         wakeDao.saveSettings(change(wakeDao.settings() ?: AppSettings()))

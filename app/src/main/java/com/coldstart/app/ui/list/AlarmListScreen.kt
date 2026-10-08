@@ -49,7 +49,7 @@ import com.coldstart.app.ui.theme.ColdStartTheme
 import com.coldstart.app.ui.theme.ColdText
 import com.coldstart.app.ui.theme.LocalSky
 import com.coldstart.app.ui.theme.Motion
-import com.coldstart.app.ui.theme.Skies
+import com.coldstart.app.ui.theme.LocalSkyTheme
 import com.coldstart.app.ui.theme.Space
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -75,7 +75,7 @@ private fun AlarmListContent(
     onHistory: () -> Unit,
     onSettings: () -> Unit,
 ) {
-    SkyBackground(Skies.forHour(ui?.hour ?: LocalTime.now().hour)) {
+    SkyBackground(LocalSkyTheme.current.forHour(ui?.hour ?: LocalTime.now().hour)) {
         val sky = LocalSky.current
         LazyColumn(
             modifier = Modifier.safeDrawingPadding(),

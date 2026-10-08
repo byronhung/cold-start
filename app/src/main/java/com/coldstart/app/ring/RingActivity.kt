@@ -7,6 +7,8 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.addCallback
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.activity.enableEdgeToEdge
 import com.coldstart.app.ColdStartApp
 import com.coldstart.app.ui.theme.ColdStartTheme
@@ -30,7 +32,8 @@ class RingActivity : ComponentActivity() {
         val controller = (application as ColdStartApp).ringController
         val is24Hour = DateFormat.is24HourFormat(this)
         setContent {
-            ColdStartTheme {
+            val skyTheme by (application as ColdStartApp).skyTheme.collectAsState()
+            ColdStartTheme(skyTheme) {
                 RingRoute(controller = controller, is24Hour = is24Hour, onClose = { finishAndRemoveTask() })
             }
         }

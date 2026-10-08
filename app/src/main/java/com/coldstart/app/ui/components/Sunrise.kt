@@ -88,6 +88,7 @@ import com.coldstart.app.ui.theme.ColdShapes
 import com.coldstart.app.ui.theme.ColdText
 import com.coldstart.app.ui.theme.LocalSky
 import com.coldstart.app.ui.theme.Motion
+import com.coldstart.app.ui.theme.Scene
 import com.coldstart.app.ui.theme.Sky
 import com.coldstart.app.ui.theme.Sun
 import kotlin.math.abs
@@ -120,7 +121,7 @@ fun SkyBackground(
                     drawRect(Brush.verticalGradient(0f to sky.top, 0.58f to sky.mid, 1f to sky.bottom, startY = y0, endY = y0 + h))
                 },
         ) {
-            Box(
+            if (sky.scene == Scene.SUN) Box(
                 Modifier
                     .align(Alignment.BottomCenter)
                     .offset(y = 270.dp)
@@ -135,6 +136,7 @@ fun SkyBackground(
                         CircleShape,
                     ),
             )
+            SceneLayer(sky, Modifier.fillMaxSize())
             content()
         }
     }

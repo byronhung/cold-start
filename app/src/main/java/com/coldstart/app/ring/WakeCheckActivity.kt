@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.collectAsState
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -57,7 +58,7 @@ import com.coldstart.app.ui.theme.ColdStartTheme
 import com.coldstart.app.ui.theme.ColdText
 import com.coldstart.app.ui.theme.LocalSky
 import com.coldstart.app.ui.theme.Motion
-import com.coldstart.app.ui.theme.Skies
+import com.coldstart.app.ui.theme.LocalSkyTheme
 import com.coldstart.app.ui.theme.Sun
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -83,7 +84,8 @@ class WakeCheckActivity : ComponentActivity() {
         }
         val app = application as ColdStartApp
         setContent {
-            ColdStartTheme {
+            val skyTheme by app.skyTheme.collectAsState()
+            ColdStartTheme(skyTheme) {
                 WakeCheckScreen(
                     check = check,
                     deadline = deadline,
@@ -135,7 +137,7 @@ private fun WakeCheckScreen(check: WakeCheck, deadline: Long, onConfirm: () -> U
     val leftMs = (deadline - now).coerceAtLeast(0)
     val fraction = leftMs.toFloat() / WakeCheck.WINDOW_MS
 
-    SkyBackground(Skies.Morning) {
+    SkyBackground(LocalSkyTheme.current.morning) {
         val sky = LocalSky.current
         Column(
             Modifier

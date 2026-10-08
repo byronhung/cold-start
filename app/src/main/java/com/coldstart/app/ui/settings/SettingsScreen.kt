@@ -1,6 +1,7 @@
 package com.coldstart.app.ui.settings
 
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -51,6 +52,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -68,7 +70,9 @@ import com.coldstart.app.ui.components.SunIcons
 import com.coldstart.app.ui.theme.ColdShapes
 import com.coldstart.app.ui.theme.ColdText
 import com.coldstart.app.ui.theme.LocalSky
-import com.coldstart.app.ui.theme.Skies
+import com.coldstart.app.ui.theme.LocalSkyTheme
+import com.coldstart.app.ui.theme.Motion
+import com.coldstart.app.ui.theme.SkyTheme
 import com.coldstart.app.ui.theme.Space
 import com.coldstart.app.ui.theme.Sun
 import kotlinx.coroutines.flow.SharingStarted
@@ -84,6 +88,7 @@ data class SettingsUi(
     val mix: List<RoundType>,
     val defaultDifficulty: Preset,
     val isPlus: Boolean,
+    val theme: SkyTheme,
 )
 
 class SettingsViewModel(private val repository: AlarmRepository) : ViewModel() {
@@ -95,6 +100,7 @@ class SettingsViewModel(private val repository: AlarmRepository) : ViewModel() {
             mix = effectiveMix(parseMix(settings.puzzleMix), settings.isPlus),
             defaultDifficulty = Preset.of(settings.defaultDifficulty),
             isPlus = settings.isPlus,
+            theme = SkyTheme.effective(settings.theme, settings.isPlus),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
@@ -115,6 +121,10 @@ class SettingsViewModel(private val repository: AlarmRepository) : ViewModel() {
         viewModelScope.launch { repository.setDefaultDifficulty(preset) }
     }
 
+    fun setTheme(theme: SkyTheme) {
+        viewModelScope.launch { repository.setTheme(theme) }
+    }
+
     fun setPlus(on: Boolean) {
         viewModelScope.launch { repository.setPlus(on) }
     }
@@ -125,7 +135,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onScan: () -> Unit, onBack: () 
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     var plusReason by remember { mutableStateOf<String?>(null) }
     var mixNote by remember { mutableStateOf<String?>(null) }
-    SkyBackground(Skies.Night) {
+    SkyBackground(LocalSkyTheme.current.night) {
         val sky = LocalSky.current
         Column(
             Modifier
@@ -196,6 +206,25 @@ fun SettingsScreen(viewModel: SettingsViewModel, onScan: () -> Unit, onBack: () 
                             style = ColdText.caption.copy(fontSize = 12.5.sp),
                             color = sky.dim,
                         )
+                    }
+                }
+
+                GlassCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        SectionLabel("Theme")
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            SkyTheme.entries.forEach { theme ->
+                                val locked = theme.plus && !current.isPlus
+                                ThemeSwatch(
+                                    theme = theme,
+                                    selected = theme == current.theme,
+                                    locked = locked,
+                                    onTap = {
+                                        if (locked) plusReason = "${theme.label} is a Plus sky." else viewModel.setTheme(theme)
+                                    },
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -348,6 +377,41 @@ private fun MixTile(entry: CatalogPuzzle, on: Boolean, isPlus: Boolean, modifier
         if (locked) {
             Icon(SunIcons.Lock, contentDescription = null, tint = Sun.ToggleLight, modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).size(12.dp))
         }
+    }
+}
+
+/** One sky in the Theme row: its night-to-dawn colours, amber-ringed when chosen, a lock when it's Plus. */
+@Composable
+private fun ThemeSwatch(theme: SkyTheme, selected: Boolean, locked: Boolean, onTap: () -> Unit) {
+    val sky = LocalSky.current
+    val scale by animateFloatAsState(if (selected) 1.06f else 1f, Motion.bouncy(), label = "swatch")
+    Column(
+        Modifier
+            .springClick(0.9f, onClick = onTap)
+            .semantics(mergeDescendants = true) {
+                contentDescription = theme.label + when { locked -> ", Plus"; selected -> ", chosen"; else -> "" }
+            },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(
+            Modifier
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    alpha = if (locked) 0.55f else 1f
+                }
+                .size(52.dp)
+                .clip(ColdShapes.small)
+                .background(Brush.linearGradient(theme.swatch))
+                .border(2.dp, if (selected) Sun.ToggleLight else Color.Transparent, ColdShapes.small),
+        ) {
+            if (locked) {
+                Icon(SunIcons.Lock, contentDescription = null, tint = Sun.ToggleLight, modifier = Modifier.align(Alignment.TopEnd).padding(5.dp).size(12.dp))
+            }
+        }
+        // "Neon city" is too long for a 52 dp swatch; the first word is the name people use.
+        Text(theme.label.substringBefore(' '), style = ColdText.chip.copy(fontSize = 11.sp), color = sky.ink.copy(alpha = if (locked) 0.6f else 1f))
     }
 }
 

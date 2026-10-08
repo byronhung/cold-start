@@ -3,6 +3,7 @@ package com.coldstart.app.ui.theme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 
 // Material only supplies the odd system widget (text selection, cursor). Sunrise draws the rest.
@@ -14,7 +15,10 @@ private val SunriseScheme = darkColorScheme(
     onSurface = Color(0xFFFFF6EC),
 )
 
+/** [sky]: the theme every screen inside draws its sky from (Settings › Theme). */
 @Composable
-fun ColdStartTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = SunriseScheme, typography = ColdTypography, content = content)
+fun ColdStartTheme(sky: SkyTheme = SkyTheme.SUNRISE, content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalSkyTheme provides sky) {
+        MaterialTheme(colorScheme = SunriseScheme, typography = ColdTypography, content = content)
+    }
 }

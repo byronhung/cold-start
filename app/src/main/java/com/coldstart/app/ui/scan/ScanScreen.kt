@@ -34,7 +34,7 @@ import com.coldstart.app.ui.components.SunIcons
 import com.coldstart.app.ui.theme.ColdShapes
 import com.coldstart.app.ui.theme.ColdText
 import com.coldstart.app.ui.theme.LocalSky
-import com.coldstart.app.ui.theme.Skies
+import com.coldstart.app.ui.theme.LocalSkyTheme
 import com.coldstart.app.ui.theme.Space
 import com.google.android.gms.common.moduleinstall.ModuleInstall
 import com.google.android.gms.common.moduleinstall.ModuleInstallRequest
@@ -63,7 +63,7 @@ fun ScanScreen(onCode: (String) -> Unit, onBack: () -> Unit) {
     var torch by remember { mutableStateOf(false) }
     var done by remember { mutableStateOf(false) }
 
-    SkyBackground(Skies.Night) {
+    SkyBackground(LocalSkyTheme.current.night) {
         val sky = LocalSky.current
         Column(
             Modifier

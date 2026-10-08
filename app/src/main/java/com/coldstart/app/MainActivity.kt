@@ -48,7 +48,8 @@ class MainActivity : ComponentActivity() {
         val is24Hour = DateFormat.is24HourFormat(this)
 
         setContent {
-            ColdStartTheme {
+            val skyTheme by (application as ColdStartApp).skyTheme.collectAsState()
+            ColdStartTheme(skyTheme) {
                 val nav = rememberNavController()
                 NavHost(
                     navController = nav,

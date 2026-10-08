@@ -7,9 +7,14 @@ import com.coldstart.app.data.AlarmRepository
 import com.coldstart.app.data.ColdStartDatabase
 import com.coldstart.app.ring.Notifications
 import com.coldstart.app.ring.RingController
+import com.coldstart.app.ui.theme.SkyTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
@@ -24,9 +29,20 @@ class ColdStartApp : Application() {
     val repository: AlarmRepository by lazy { AlarmRepository(ColdStartDatabase.build(this), scheduler, PendingCheckStore(this)) }
     val ringController: RingController by lazy { RingController(repository, appScope) }
 
+    /**
+     * The chosen sky, kept warm for the whole process: the ringing screen opens on the right theme
+     * instead of flashing Sunrise while the database answers.
+     */
+    val skyTheme: StateFlow<SkyTheme> by lazy {
+        repository.settings
+            .map { SkyTheme.effective(it?.theme ?: 0, it?.isPlus == true) }
+            .stateIn(appScope, SharingStarted.Eagerly, SkyTheme.SUNRISE)
+    }
+
     override fun onCreate() {
         super.onCreate()
         Notifications.ensureChannel(this)
+        skyTheme.value // Starts reading it now, before any alarm can ring.
         // Covers the cases no broadcast announces, like a force-stop wiping every scheduled alarm.
         appScope.launch { repository.rescheduleAll() }
     }

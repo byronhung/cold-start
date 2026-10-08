@@ -62,7 +62,7 @@ import com.coldstart.app.ui.components.springClick
 import com.coldstart.app.ui.theme.ColdShapes
 import com.coldstart.app.ui.theme.ColdText
 import com.coldstart.app.ui.theme.LocalSky
-import com.coldstart.app.ui.theme.Skies
+import com.coldstart.app.ui.theme.LocalSkyTheme
 import com.coldstart.app.ui.theme.Space
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -71,7 +71,7 @@ import java.time.LocalTime
 fun AlarmEditScreen(viewModel: AlarmEditViewModel, onScanForCode: () -> Unit, onDone: () -> Unit) {
     val wakeCode by viewModel.wakeCode.collectAsStateWithLifecycle()
     val defaultDifficulty by viewModel.defaultDifficulty.collectAsStateWithLifecycle()
-    SkyBackground(Skies.forHour(LocalTime.now().hour)) {
+    SkyBackground(LocalSkyTheme.current.forHour(LocalTime.now().hour)) {
         val draft = viewModel.draft ?: return@SkyBackground
         AlarmEditContent(
             draft = draft,

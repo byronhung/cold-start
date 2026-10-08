@@ -32,7 +32,7 @@ import com.coldstart.app.ui.components.SunIcons
 import com.coldstart.app.ui.theme.ColdShapes
 import com.coldstart.app.ui.theme.ColdText
 import com.coldstart.app.ui.theme.LocalSky
-import com.coldstart.app.ui.theme.Skies
+import com.coldstart.app.ui.theme.LocalSkyTheme
 import com.coldstart.app.ui.theme.Space
 import com.coldstart.app.ui.theme.Sun
 import kotlinx.coroutines.flow.SharingStarted
@@ -87,7 +87,7 @@ class HistoryViewModel(repository: AlarmRepository, private val is24Hour: Boolea
 @Composable
 fun HistoryScreen(viewModel: HistoryViewModel, onBack: () -> Unit) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
-    SkyBackground(Skies.Night) {
+    SkyBackground(LocalSkyTheme.current.night) {
         val sky = LocalSky.current
         LazyColumn(
             modifier = Modifier.safeDrawingPadding(),

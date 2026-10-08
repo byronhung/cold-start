@@ -73,7 +73,7 @@ import com.coldstart.app.ui.components.springClick
 import com.coldstart.app.ui.theme.ColdShapes
 import com.coldstart.app.ui.theme.ColdText
 import com.coldstart.app.ui.theme.Motion
-import com.coldstart.app.ui.theme.Skies
+import com.coldstart.app.ui.theme.LocalSkyTheme
 import com.coldstart.app.ui.theme.Sun
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -101,7 +101,7 @@ fun RingRoute(controller: RingController, is24Hour: Boolean, onClose: () -> Unit
     // Set the moment the ring ends here, so the closing screen shows instead of an instant exit.
     var ending by remember { mutableStateOf<Ending?>(null) }
 
-    SkyBackground(Skies.Dawn, drift = true) {
+    SkyBackground(LocalSkyTheme.current.dawn, drift = true) {
         val finished = ending
         when {
             finished != null -> EndScreen(finished, is24Hour, onClose)

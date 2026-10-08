@@ -35,6 +35,8 @@ data class AppSettings(
     @ColumnInfo(defaultValue = "1") val defaultDifficulty: Int = 1,
     /** Cold Start Plus unlocked. Until Google Play Billing (chunk P11), set by a debug switch. */
     @ColumnInfo(defaultValue = "0") val isPlus: Boolean = false,
+    /** [com.coldstart.app.ui.theme.SkyTheme.code]. 0 = Sunrise, the free one. */
+    @ColumnInfo(defaultValue = "0") val theme: Int = 0,
 )
 
 /** One solved puzzle round. Adaptive difficulty reads these. */

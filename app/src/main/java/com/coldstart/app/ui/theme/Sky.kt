@@ -6,9 +6,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 /**
- * Sunrise: the background is the sky at the current hour, from the approved prototype
- * (claude.ai/artifact/RJ5hJG9ZUmeCjKF3fH7S6f, "The sky by hour"). Every colour a screen uses for text
- * and glass comes from the sky it sits on, so a pale midday sky gets dark ink and a night sky light.
+ * The background is the sky at the current hour, from the chosen [SkyTheme]. Every colour a screen
+ * uses for text and glass comes from the sky it sits on, so a pale midday sky gets dark ink and a
+ * night sky light.
  */
 @Immutable
 data class Sky(
@@ -16,8 +16,10 @@ data class Sky(
     val mid: Color,
     val bottom: Color,
     val isLight: Boolean,
-    /** How strongly the sun glows at the bottom of the screen. */
+    /** How strongly the sun glows at the bottom of the screen. Only Sunrise has the glow. */
     val sunAlpha: Float,
+    val phase: Phase = if (isLight) Phase.DAY else Phase.NIGHT,
+    val scene: Scene = Scene.SUN,
 ) {
     val brush: Brush get() = Brush.verticalGradient(0f to top, 0.58f to mid, 1f to bottom)
 
@@ -33,32 +35,8 @@ data class Sky(
     val sunInk: Color get() = if (isLight) Color(0xFFC8562E) else Color(0xFFFFC27A)
 }
 
-object Skies {
-    private val stops = listOf(
-        0 to Sky(Color(0xFF0A0E2A), Color(0xFF17183F), Color(0xFF2A1D52), false, 0.35f),
-        5 to Sky(Color(0xFF151638), Color(0xFF3B2564), Color(0xFF8A4170), false, 0.6f),
-        6 to Sky(Color(0xFF2C205E), Color(0xFFA8476F), Color(0xFFF49D5F), false, 1f),
-        8 to Sky(Color(0xFFF3AE78), Color(0xFFF8CDA2), Color(0xFFFCE7CB), true, 0.8f),
-        11 to Sky(Color(0xFFF4DABB), Color(0xFFF9E8D2), Color(0xFFFEF5E9), true, 0.5f),
-        17 to Sky(Color(0xFF4A2C6B), Color(0xFFC4566C), Color(0xFFF4A35E), false, 0.9f),
-        19 to Sky(Color(0xFF1D1B4B), Color(0xFF3D2664), Color(0xFF713668), false, 0.5f),
-        21 to Sky(Color(0xFF0B1030), Color(0xFF1A1B46), Color(0xFF2D2058), false, 0.35f),
-    )
-
-    fun forHour(hour: Int): Sky = stops.last { it.first <= hour.coerceIn(0, 23) }.second
-
-    /** The ringing screen is always dawn, whatever the clock says. */
-    val Dawn = Sky(Color(0xFF2C205E), Color(0xFF7B3A72), Color(0xFFF7A35F), false, 1f)
-
-    /** Wake checks: full morning, light. */
-    val Morning = Sky(Color(0xFFF09A63), Color(0xFFF7C08F), Color(0xFFFCE3C4), true, 0.6f)
-
-    /** Settings, history, setup: the late-evening sky you see when setting alarms. */
-    val Night = forHour(22)
-}
-
 /** The sky the current screen is drawn on. Set by SkyBackground. */
-val LocalSky = staticCompositionLocalOf { Skies.Night }
+val LocalSky = staticCompositionLocalOf { SkyTheme.SUNRISE.night }
 
 /** Fixed colours that don't depend on the sky. */
 object Sun {
