@@ -21,10 +21,16 @@ No snooze.
 - **Turning the volume down doesn't help.** While it rings, the alarm volume is held up and the
   volume buttons do nothing.
 - **The only other exit is holding a button for 30 seconds.** Every give-up is logged in History.
+- **Your month at a glance.** History shows a calendar of mornings (up, rang again, gave up) and the
+  time you were actually up each day.
+- **Tidy up fast.** Long-press an alarm to select several and delete them at once, with Undo.
+
+*Coming with Cold Start Plus (one payment, not on sale yet): three more puzzles and four skies you can
+touch: Aurora, Monsoon, Neon city and Coast.*
 
 ## Install
 
-1. Download [`apk/ColdStart-0.2.apk`](apk/ColdStart-0.2.apk) on an Android phone (Android 10 or newer).
+1. Download [`apk/ColdStart-0.3.apk`](apk/ColdStart-0.3.apk) on an Android phone (Android 10 or newer).
 2. Open it. Android will ask you to allow installing from that app (Files, Chrome, WhatsApp…). Allow it.
    It will also warn that the app isn't from the Play Store; that's expected.
 3. Open Cold Start and tap **Allow** on everything in the *Before alarms can ring* card,
