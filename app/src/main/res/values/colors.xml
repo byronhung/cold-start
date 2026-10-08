@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ground">#FF0D1017</color>
     <!-- Night sky top: the window colour while the app starts, so there is no flash. -->
     <color name="sky_night">#FF0B1030</color>
 </resources>

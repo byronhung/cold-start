@@ -566,15 +566,21 @@ fun HoldToGiveUp(holdMs: Long, onGiveUp: () -> Unit, modifier: Modifier = Modifi
     }
 }
 
-/** The logo: a power symbol that is also a clock. Drawn, so it takes any colour. */
+/**
+ * The logo, "Horizon": the sun half risen over the horizon with five rays, as on the app icon.
+ * Drawn from the icon's 108-unit geometry, cropped to the mark, so it takes any colour.
+ */
 @Composable
 fun LogoMark(color: Color, size: Dp = 26.dp) {
     Canvas(Modifier.size(size)) {
-        val s = this.size.width / 108f
-        val stroke = Stroke(7f * s, cap = StrokeCap.Round)
-        val r = 19f * s
-        drawArc(color, -55f, 290f, false, Offset(54f * s - r, 50f * s - r), androidx.compose.ui.geometry.Size(r * 2, r * 2), style = stroke)
-        drawLine(color, Offset(54f * s, 26f * s), Offset(54f * s, 47f * s), strokeWidth = 7f * s, cap = StrokeCap.Round)
+        // The mark spans x 18..90 and y 34..74 of the icon; fit that 72-wide box and centre it.
+        val s = this.size.width / 72f
+        fun p(x: Float, y: Float) = Offset((x - 18f) * s, (y - 18f) * s)
+        val r = 20f * s
+        drawArc(color, 180f, 180f, useCenter = true, topLeft = p(34f, 52f), size = androidx.compose.ui.geometry.Size(r * 2, r * 2))
+        val rays = listOf(31.5f to 59f to (24.6f to 55f), 41f to 49.5f to (37f to 42.6f), 54f to 46f to (54f to 38f), 67f to 49.5f to (71f to 42.6f), 76.5f to 59f to (83.4f to 55f))
+        for ((from, to) in rays) drawLine(color, p(from.first, from.second), p(to.first, to.second), strokeWidth = 4f * s, cap = StrokeCap.Round)
+        drawLine(color, p(20f, 72f), p(88f, 72f), strokeWidth = 3.5f * s, cap = StrokeCap.Round)
     }
 }
 
