@@ -4,6 +4,8 @@ import android.os.Bundle
 import android.text.format.DateFormat
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import com.byronhung.firstlight.ui.welcome.WelcomeScreen
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -61,6 +63,10 @@ class MainActivity : ComponentActivity() {
                     popExitTransition = { slideOutHorizontally(tween(260)) { it / 8 } + fadeOut(tween(220)) },
                 ) {
                     composable("list") {
+                        // First launch: the welcome, once. Finishing or skipping it marks it done.
+                        LaunchedEffect(Unit) {
+                            if (!repository.currentSettings().welcomeDone) nav.navigate("welcome?replay=false")
+                        }
                         val vm: AlarmListViewModel = viewModel(
                             factory = viewModelFactory { initializer { AlarmListViewModel(repository, is24Hour) } },
                         )
@@ -89,7 +95,43 @@ class MainActivity : ComponentActivity() {
                                 entry.savedStateHandle[SCANNED_CODE] = null
                             }
                         }
-                        SettingsScreen(viewModel = vm, onScan = { nav.navigate("scan") }, onBack = { nav.popBackStack() })
+                        SettingsScreen(
+                            viewModel = vm,
+                            onScan = { nav.navigate("scan") },
+                            onHelp = { nav.navigate("welcome?replay=true") },
+                            onBack = { nav.popBackStack() },
+                        )
+                    }
+                    composable(
+                        route = "welcome?replay={replay}",
+                        arguments = listOf(navArgument("replay") { type = NavType.BoolType; defaultValue = false }),
+                    ) { entry ->
+                        val replay = entry.arguments?.getBoolean("replay") == true
+                        val settings by repository.settings.collectAsState(initial = null)
+                        val scope = rememberCoroutineScope()
+                        val scanned by entry.savedStateHandle.getStateFlow<String?>(SCANNED_CODE, null).collectAsState()
+                        LaunchedEffect(scanned) {
+                            scanned?.let {
+                                repository.setWakeCode(it)
+                                entry.savedStateHandle[SCANNED_CODE] = null
+                            }
+                        }
+                        WelcomeScreen(
+                            wakeCode = settings?.wakeCode,
+                            replay = replay,
+                            onScan = { nav.navigate("scan") },
+                            onDone = {
+                                scope.launch {
+                                    repository.setWelcomeDone()
+                                    if (replay) {
+                                        nav.popBackStack()
+                                    } else {
+                                        // Straight into setting the first alarm, with the welcome gone from Back.
+                                        nav.navigate("edit") { popUpTo("welcome?replay={replay}") { inclusive = true } }
+                                    }
+                                }
+                            },
+                        )
                     }
                     composable("scan") {
                         ScanScreen(

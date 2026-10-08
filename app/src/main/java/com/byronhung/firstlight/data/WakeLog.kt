@@ -37,6 +37,12 @@ data class AppSettings(
     @ColumnInfo(defaultValue = "0") val isPlus: Boolean = false,
     /** [com.byronhung.firstlight.ui.theme.SkyTheme.code]. 0 = Sunrise, the free one. */
     @ColumnInfo(defaultValue = "0") val theme: Int = 0,
+    /** The first-run welcome has been finished or skipped. */
+    @ColumnInfo(defaultValue = "0") val welcomeDone: Boolean = false,
+    /** When the Plus popup last showed (epoch millis), 0 = never. */
+    @ColumnInfo(defaultValue = "0") val plusNudgeAt: Long = 0,
+    /** Times "Not now" was tapped on the Plus popup. After three it stops for good. */
+    @ColumnInfo(defaultValue = "0") val plusNudgeDismissals: Int = 0,
 )
 
 /** One solved puzzle round. Adaptive difficulty reads these. */

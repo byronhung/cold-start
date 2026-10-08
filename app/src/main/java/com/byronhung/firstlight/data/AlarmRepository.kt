@@ -57,6 +57,11 @@ class AlarmRepository(
 
     suspend fun setTheme(theme: SkyTheme) = editSettings { it.copy(theme = theme.code) }
 
+    suspend fun setWelcomeDone() = editSettings { it.copy(welcomeDone = true) }
+
+    /** The settings as they are now, read once. */
+    suspend fun currentSettings(): AppSettings = wakeDao.settings() ?: AppSettings()
+
     private suspend fun editSettings(change: (AppSettings) -> AppSettings) = mutex.withLock {
         wakeDao.saveSettings(change(wakeDao.settings() ?: AppSettings()))
     }

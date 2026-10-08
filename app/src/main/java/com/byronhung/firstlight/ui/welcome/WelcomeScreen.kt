@@ -1,0 +1,369 @@
+package com.byronhung.firstlight.ui.welcome
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.byronhung.firstlight.puzzle.Levels
+import com.byronhung.firstlight.puzzle.StroopPuzzle
+import com.byronhung.firstlight.ui.components.AmberButton
+import com.byronhung.firstlight.ui.components.LogoMark
+import com.byronhung.firstlight.ui.components.QuietButton
+import com.byronhung.firstlight.ui.components.SectionLabel
+import com.byronhung.firstlight.ui.components.SkyBackground
+import com.byronhung.firstlight.ui.components.springClick
+import com.byronhung.firstlight.ui.list.SetupRow
+import com.byronhung.firstlight.ui.list.rememberSetupItems
+import com.byronhung.firstlight.ui.theme.AppShapes
+import com.byronhung.firstlight.ui.theme.AppText
+import com.byronhung.firstlight.ui.theme.LocalSky
+import com.byronhung.firstlight.ui.theme.LocalSkyTheme
+import com.byronhung.firstlight.ui.theme.Sun
+import kotlinx.coroutines.delay
+
+private const val STEPS = 5
+private const val PERMISSIONS_STEP = 4
+
+/**
+ * The first-run welcome, from the approved mockup (claude.ai/artifact/3BdabayPCjA5BD57hGj6LC):
+ * what the app is, a real puzzle to play, tap-to-quiet, registering a code, and the permissions
+ * alarms need. Skip jumps to the permissions, since those are the one step that really matters.
+ * Settings › "How First Light works" replays it ([replay]: no "set my first alarm" at the end).
+ *
+ * [wakeCode] is the registered code, if any; [onScan] opens the real scanner, which saves the code
+ * through Settings' usual path and comes back here.
+ */
+@Composable
+fun WelcomeScreen(wakeCode: String?, replay: Boolean, onScan: () -> Unit, onDone: () -> Unit) {
+    var step by rememberSaveable { mutableIntStateOf(0) }
+    BackHandler(enabled = step > 0) { step-- }
+
+    SkyBackground(LocalSkyTheme.current.dawn) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .safeDrawingPadding()
+                .padding(start = 24.dp, end = 24.dp, top = 18.dp, bottom = 22.dp),
+        ) {
+            Row(Modifier.fillMaxWidth().height(44.dp), verticalAlignment = Alignment.CenterVertically) {
+                Pips(step, Modifier.weight(1f))
+                if (step < PERMISSIONS_STEP) {
+                    Text(
+                        "Skip",
+                        style = AppText.bodyStrong,
+                        color = LocalSky.current.dim,
+                        modifier = Modifier.springClick(0.9f) { step = PERMISSIONS_STEP }.padding(horizontal = 6.dp, vertical = 10.dp),
+                    )
+                }
+            }
+            AnimatedContent(
+                targetState = step,
+                transitionSpec = { (slideInHorizontally(tween(320)) { it / 8 } + fadeIn(tween(320))).togetherWith(fadeOut(tween(160))) },
+                modifier = Modifier.weight(1f),
+                label = "welcome",
+            ) { s ->
+                Column(Modifier.fillMaxSize()) {
+                    when (s) {
+                        0 -> Hello(next = { step = 1 })
+                        1 -> TryOne(next = { step = 2 })
+                        2 -> Quiet(next = { step = 3 })
+                        3 -> Scan(wakeCode, onScan, next = { step = 4 })
+                        else -> Permissions(replay, onDone)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun Pips(step: Int, modifier: Modifier) {
+    Row(modifier, horizontalArrangement = Arrangement.Center) {
+        // Balance the Skip button on the right so the pips sit in the middle.
+        Spacer(Modifier.width(40.dp))
+        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
+            repeat(STEPS) { i ->
+                Box(
+                    Modifier
+                        .size(width = if (i == step) 30.dp else 22.dp, height = 5.dp)
+                        .clip(AppShapes.small)
+                        .background(if (i == step) Sun.ToggleLight else Sun.OnGlass.copy(alpha = 0.22f)),
+                )
+            }
+        }
+    }
+}
+
+/** The shared layout of a step: label, title, body, whatever the step shows, and its buttons. */
+@Composable
+private fun ColumnScope.Step(
+    label: String,
+    title: String,
+    body: String?,
+    buttons: @Composable ColumnScope.() -> Unit,
+    content: @Composable ColumnScope.() -> Unit = {},
+) {
+    val sky = LocalSky.current
+    Column(
+        Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically),
+    ) {
+        SectionLabel(label, color = sky.sunInk)
+        Text(title, style = AppText.display.copy(fontSize = 32.sp, lineHeight = 36.sp), color = sky.ink)
+        if (body != null) Text(body, style = AppText.body, color = sky.dim)
+        content()
+    }
+    Column(Modifier.fillMaxWidth().padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { buttons() }
+}
+
+@Composable
+private fun ColumnScope.Hello(next: () -> Unit) {
+    Step(
+        label = "Welcome to First Light",
+        title = "An alarm that makes sure you're up.",
+        body = "No snooze. To stop it, you solve a few quick puzzles, or walk to a code and scan it. " +
+            "The only other way out is holding a button for 30 seconds, and that gets written down.",
+        buttons = { AmberButton("Show me", next, Modifier.fillMaxWidth(), height = 56.dp) },
+    ) {
+        LogoMark(Sun.Glow, size = 84.dp)
+    }
+}
+
+/** A real Stroop round at the easiest level: the fastest way to get what a morning feels like. */
+@Composable
+private fun ColumnScope.TryOne(next: () -> Unit) {
+    var solved by remember { mutableStateOf(false) }
+    var misses by remember { mutableIntStateOf(0) }
+    Step(
+        label = "Try one",
+        title = "Each morning is a few rounds like this.",
+        body = null,
+        buttons = { AmberButton(if (solved) "Next" else "Skip the puzzle", next, Modifier.fillMaxWidth(), height = 56.dp) },
+    ) {
+        PuzzleGlass {
+            if (!solved) StroopPuzzle(Levels.MIN, onMiss = { misses++ }, onSolved = { solved = true })
+            else Text("That's it. A morning is a few of these, each a different kind.", style = AppText.bodyStrong, color = Sun.Glow, textAlign = TextAlign.Center)
+        }
+        if (!solved && misses > 0) {
+            Text("Read what it asks: the ink colour, or the word.", style = AppText.caption, color = LocalSky.current.dim)
+        }
+    }
+}
+
+/** Tap-to-quiet, shown on a pretend ringing alarm. Same 10 s rule as a real ring. */
+@Composable
+private fun ColumnScope.Quiet(next: () -> Unit) {
+    var lastTap by remember { mutableLongStateOf(0L) }
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(250)
+            now = System.currentTimeMillis()
+        }
+    }
+    val quiet = lastTap != 0L && now - lastTap < 10_000
+    Step(
+        label = "Quiet while you solve",
+        title = "Somewhere quiet? Tap to hush it.",
+        body = "Tapping the puzzle silences the alarm while you work. Stop for 10 seconds and it comes back " +
+            "at full volume, so you can't drift off.",
+        buttons = { AmberButton("Next", next, Modifier.fillMaxWidth(), height = 56.dp) },
+    ) {
+        PuzzleGlass(
+            Modifier
+                .springClick(0.97f) {
+                    lastTap = System.currentTimeMillis()
+                    now = lastTap
+                }
+                .semantics { contentDescription = if (quiet) "Quiet. Tap again to keep it quiet." else "Ringing alarm. Tap to quiet it." },
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("6:30", style = AppText.heroClock.copy(fontSize = 64.sp), color = Sun.OnGlass)
+                SoundBars(ringing = !quiet)
+                Text(
+                    when {
+                        quiet -> "Quiet while you keep tapping"
+                        lastTap != 0L -> "Ringing again"
+                        else -> "Ringing · tap me"
+                    },
+                    style = AppText.bodyStrong,
+                    color = if (quiet) Sun.Glow else Sun.Rose,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SoundBars(ringing: Boolean) {
+    val t = rememberInfiniteTransition(label = "bars")
+    val phase by t.animateFloat(0f, 1f, infiniteRepeatable(tween(500), RepeatMode.Reverse), label = "bar")
+    Canvas(Modifier.size(width = 90.dp, height = 50.dp)) {
+        val n = 7
+        val gap = size.width / n
+        for (i in 0 until n) {
+            val wave = ((phase + i * 0.17f) % 1f)
+            val h = if (ringing) size.height * (0.2f + 0.8f * wave) else size.height * 0.16f
+            drawLine(
+                Sun.ToggleLight, Offset(gap * (i + 0.5f), size.height / 2 - h / 2), Offset(gap * (i + 0.5f), size.height / 2 + h / 2),
+                strokeWidth = gap * 0.55f, cap = StrokeCap.Round,
+            )
+        }
+    }
+}
+
+/** Registering the wake-up code: the real scanner, or later. */
+@Composable
+private fun ColumnScope.Scan(wakeCode: String?, onScan: () -> Unit, next: () -> Unit) {
+    Step(
+        label = "Or scan to stop it",
+        title = "Pick something away from your bed.",
+        body = "Toothpaste, a cereal box, the kettle: any barcode or QR code. Out when an alarm goes off? " +
+            "“Can't scan now?” swaps the scan for two hard puzzles.",
+        buttons = {
+            if (wakeCode == null) {
+                AmberButton("Scan a code", onScan, Modifier.fillMaxWidth(), height = 56.dp)
+                QuietButton("Later", next, Modifier.fillMaxWidth())
+            } else {
+                AmberButton("Next", next, Modifier.fillMaxWidth(), height = 56.dp)
+            }
+        },
+    ) {
+        Viewfinder()
+        if (wakeCode != null) {
+            Text("Saved · $wakeCode", style = AppText.bodyStrong, color = Sun.Glow)
+        }
+    }
+}
+
+/** A drawn viewfinder: corners, a barcode, and a scan line sweeping over it. */
+@Composable
+private fun Viewfinder() {
+    val t = rememberInfiniteTransition(label = "scan")
+    val sweep by t.animateFloat(0f, 1f, infiniteRepeatable(tween(2000), RepeatMode.Reverse), label = "line")
+    Canvas(
+        Modifier
+            .fillMaxWidth()
+            .height(180.dp)
+            .clip(AppShapes.puzzle)
+            .background(Color(0xFF221E2B)),
+    ) {
+        val c = Sun.Glow
+        val inset = 22.dp.toPx()
+        val arm = 26.dp.toPx()
+        val sw = 3.dp.toPx()
+        for ((x, y, dx, dy) in listOf(
+            listOf(inset, inset, 1f, 1f), listOf(size.width - inset, inset, -1f, 1f),
+            listOf(inset, size.height - inset, 1f, -1f), listOf(size.width - inset, size.height - inset, -1f, -1f),
+        )) {
+            drawLine(c, Offset(x, y), Offset(x + dx * arm, y), strokeWidth = sw, cap = StrokeCap.Round)
+            drawLine(c, Offset(x, y), Offset(x, y + dy * arm), strokeWidth = sw, cap = StrokeCap.Round)
+        }
+        val bw = 150.dp.toPx()
+        val bh = 64.dp.toPx()
+        val left = (size.width - bw) / 2
+        val top = (size.height - bh) / 2
+        drawRoundRect(Color(0xFFF3EFE6), Offset(left - 10.dp.toPx(), top - 8.dp.toPx()), Size(bw + 20.dp.toPx(), bh + 16.dp.toPx()), CornerRadius(6.dp.toPx()))
+        var x = left
+        for ((i, w) in BARS.withIndex()) {
+            val px = w * 1.6f.dp.toPx()
+            if (i % 2 == 0) drawRect(Color(0xFF1B1820), Offset(x, top), Size(px, bh))
+            x += px
+        }
+        val y = inset + (size.height - inset * 2) * sweep
+        drawLine(Sun.ToggleLight, Offset(inset + 8.dp.toPx(), y), Offset(size.width - inset - 8.dp.toPx(), y), strokeWidth = 2.dp.toPx())
+    }
+}
+
+private val BARS = listOf(3, 1, 2, 1, 4, 1, 1, 3, 2, 1, 1, 2, 3, 1, 2, 1, 1, 4, 1, 2, 2, 1, 3, 1, 2, 2, 1, 3, 2, 1, 3)
+
+/** The one step that matters: what the phone must allow. Never blocks, since some phones refuse. */
+@Composable
+private fun ColumnScope.Permissions(replay: Boolean, onDone: () -> Unit) {
+    val items = rememberSetupItems()
+    val all = items.all { it.allowed }
+    val sky = LocalSky.current
+    Step(
+        label = if (replay) "Before alarms can ring" else "Last step",
+        title = "What alarms need to ring.",
+        body = null,
+        buttons = {
+            if (!all) {
+                Text(
+                    "Alarms may not ring until these are allowed. They'll stay on your home screen until they are.",
+                    style = AppText.caption,
+                    color = sky.dim,
+                )
+            }
+            AmberButton(if (replay) "Done" else "Set my first alarm", onDone, Modifier.fillMaxWidth(), height = 56.dp)
+        },
+    ) {
+        PuzzleGlass(contentAlignment = Alignment.TopStart) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) { items.forEach { SetupRow(it) } }
+        }
+    }
+}
+
+/** The dark glass the ringing puzzles sit on, so this looks like the real thing. */
+@Composable
+private fun PuzzleGlass(
+    modifier: Modifier = Modifier,
+    contentAlignment: Alignment = Alignment.Center,
+    content: @Composable () -> Unit,
+) {
+    Box(
+        modifier
+            .fillMaxWidth()
+            .clip(AppShapes.puzzle)
+            .background(Sun.PuzzleGlass)
+            .padding(horizontal = 18.dp, vertical = 22.dp),
+        contentAlignment = contentAlignment,
+    ) { content() }
+}

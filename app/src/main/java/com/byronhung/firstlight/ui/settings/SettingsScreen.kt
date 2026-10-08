@@ -131,7 +131,7 @@ class SettingsViewModel(private val repository: AlarmRepository) : ViewModel() {
 }
 
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel, onScan: () -> Unit, onBack: () -> Unit) {
+fun SettingsScreen(viewModel: SettingsViewModel, onScan: () -> Unit, onHelp: () -> Unit, onBack: () -> Unit) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     var plusReason by remember { mutableStateOf<String?>(null) }
     var mixNote by remember { mutableStateOf<String?>(null) }
@@ -275,6 +275,8 @@ fun SettingsScreen(viewModel: SettingsViewModel, onScan: () -> Unit, onBack: () 
                 color = sky.mute,
                 modifier = Modifier.padding(horizontal = 8.dp),
             )
+
+            QuietButton("How First Light works", onHelp, Modifier.fillMaxWidth())
 
             // Debug builds only: flip Plus on and off until Google Play Billing replaces this (P11).
             if (BuildConfig.DEBUG && ui != null) {
