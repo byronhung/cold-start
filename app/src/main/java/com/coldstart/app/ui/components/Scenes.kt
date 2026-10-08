@@ -90,9 +90,9 @@ class SceneInput {
 /**
  * The Plus skies' moving layer, drawn between the gradient and the screen's content.
  *
- * Ported scenes (Aurora, Monsoon, Neon city) are drawn from the round-2 prototype
- * (claude.ai/artifact/3kQdAWeSjG49xjk6rHy92P) in its own units: a 300-wide phone, scaled up to the
- * real screen, so every number in the port matches the prototype's. The rest are still round 1.
+ * Every scene is drawn from the round-2 prototype (claude.ai/artifact/3kQdAWeSjG49xjk6rHy92P) in
+ * its own units: a 300-wide phone, scaled up to the real screen, so every number in the port
+ * matches the prototype's.
  *
  * Everything runs off one clock in seconds, so each effect is a function of time and nothing piles
  * up across recompositions. Sunrise has no layer: its sun glow lives in [SkyBackground].
@@ -110,17 +110,14 @@ fun SceneLayer(sky: Sky, input: SceneInput, modifier: Modifier = Modifier) {
         // Touches only matter for a few seconds; don't let them pile up.
         input.taps.removeAll { t - it.t > 10f }
         input.wipes.removeAll { t - it.t > 10f }
-        when (sky.scene) {
-            Scene.AURORA -> { proto(input) { w, h, scroll, k -> aurora(w, h, t, sky.phase, input, scroll, k) }; return@Canvas }
-            Scene.MONSOON -> { proto(input) { w, h, scroll, k -> monsoon(w, h, t, sky.phase, input, scroll, k) }; return@Canvas }
-            Scene.NEON -> { proto(input) { w, h, scroll, k -> neon(w, h, t, sky.phase, input, scroll, k) }; return@Canvas }
-            else -> Unit
-        }
-        // Round-1 scenes, until each is ported.
-        val fx = when (sky.phase) { Phase.NIGHT -> 0.9f; Phase.DAWN -> 0.55f; Phase.DAY -> 0.25f }
-        when (sky.scene) {
-            Scene.COAST -> coast(t, sky.phase, fx)
-            else -> Unit
+        proto(input) { w, h, scroll, k ->
+            when (sky.scene) {
+                Scene.AURORA -> aurora(w, h, t, sky.phase, input, scroll, k)
+                Scene.MONSOON -> monsoon(w, h, t, sky.phase, input, scroll, k)
+                Scene.NEON -> neon(w, h, t, sky.phase, input, scroll, k)
+                Scene.COAST -> coast(w, h, t, sky.phase, sky.bottom, input, scroll, k)
+                Scene.SUN -> Unit
+            }
         }
     }
 }
@@ -173,50 +170,4 @@ internal fun DrawScope.stars(w: Float, maxY: Float, t: Float, alpha: Float, dy: 
         val a = alpha * (0.45f + 0.55f * (0.5f + 0.5f * sin(t * s.speed + s.phase))) * (1 - s.y * 0.6f)
         drawCircle(Color(0xFFFFFAF0).copy(alpha = a.coerceIn(0f, 1f)), s.r * 0.75f, Offset(s.x * w, s.y * maxY + dy))
     }
-}
-
-// ---------- coast: a moon (or sun) over the sea, waves rolling in ----------
-
-private fun DrawScope.coast(t: Float, phase: Phase, fx: Float) {
-    val w = size.width
-    val h = size.height
-    val seaTop = h * 0.58f
-    val r = w * 0.068f
-    // Night: moon up and right. Dawn: the sun low over the water. Day: high and bright.
-    val (orb, glow, centre) = when (phase) {
-        Phase.NIGHT -> Triple(Color(0xFFFFF2D6), Color(0x99FFF2D6), Offset(w - w * 0.152f - r, h * 0.11f + r))
-        Phase.DAWN -> Triple(Color(0xFFFFD08A), Color(0xE6FFBE78), Offset(w * 0.6f - r, seaTop - r * 1.4f))
-        Phase.DAY -> Triple(Color(0xFFFFF6E0), Color(0xE6FFF0C8), Offset(w - w * 0.12f - r, h * 0.077f + r))
-    }
-    drawCircle(Brush.radialGradient(listOf(glow, Color.Transparent), centre, r * 2.6f), r * 2.6f, centre)
-    drawCircle(orb, r, centre)
-
-    val sea = when (phase) {
-        Phase.NIGHT -> listOf(Color(0xFF0A2140), Color(0xFF06142A))
-        Phase.DAWN -> listOf(Color(0xFFD98A5E), Color(0xFF6A4B7A))
-        Phase.DAY -> listOf(Color(0xFF8FC8E0), Color(0xFF5FA6C8))
-    }
-    drawRect(Brush.verticalGradient(sea, startY = seaTop, endY = h), Offset(0f, seaTop), Size(w, h - seaTop))
-    // The light on the water, under the orb.
-    drawRect(
-        Brush.verticalGradient(listOf(Color(0xFFFFF0C8).copy(alpha = 0.5f * fx), Color.Transparent), startY = seaTop, endY = h * 0.92f),
-        Offset(centre.x - w * 0.04f, seaTop), Size(w * 0.08f, h * 0.92f - seaTop),
-    )
-    wave(seaTop + h * 0.02f, t / 7f, Color.White.copy(alpha = 0.35f))
-    wave(seaTop + h * 0.085f, t / 11f, Color.White.copy(alpha = 0.2f))
-}
-
-/** A gentle sine line across the screen, one wavelength (a quarter screen) per loop. */
-private fun DrawScope.wave(y: Float, loops: Float, color: Color) {
-    val wl = size.width / 4f
-    val shift = (loops % 1f) * wl
-    val path = Path()
-    var x = -wl + shift
-    path.moveTo(x, y)
-    while (x < size.width + wl) {
-        path.relativeQuadraticBezierTo(wl / 4, -size.height * 0.012f, wl / 2, 0f)
-        path.relativeQuadraticBezierTo(wl / 4, size.height * 0.012f, wl / 2, 0f)
-        x += wl
-    }
-    drawPath(path, color, style = Stroke(width = 4f, cap = StrokeCap.Round))
 }
