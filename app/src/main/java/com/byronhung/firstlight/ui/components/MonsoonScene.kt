@@ -103,9 +103,9 @@ internal fun DrawScope.monsoon(w: Float, h: Float, t: Float, phase: Phase, input
             drawLine(color, Offset(x, y), Offset(x - dx, y + layer.len), strokeWidth = layer.width, cap = StrokeCap.Round)
         }
     }
-    val mist = if (day) Color(0xFFF3F5F6) else Color(0xFF8FA3B8)
+    val mist = if (day) Color(0xFFDCE2E7) else Color(0xFF8FA3B8)
     drawRect(
-        Brush.verticalGradient(listOf(mist.copy(alpha = 0f), mist.copy(alpha = if (day) 0.5f else 0.22f)), startY = h * 0.55f, endY = h),
+        Brush.verticalGradient(listOf(mist.copy(alpha = 0f), mist.copy(alpha = if (day) 0.3f else 0.22f)), startY = h * 0.55f, endY = h),
         size = Size(w, h),
     )
 
@@ -114,7 +114,7 @@ internal fun DrawScope.monsoon(w: Float, h: Float, t: Float, phase: Phase, input
     val now = input.now
     input.wipes.removeAll { now - it.t >= 7f }
     drawIntoCanvas { it.saveLayer(Rect(0f, 0f, w, h), Paint()) }
-    drawRect(if (day) Color.White.copy(alpha = 0.22f) else Color(170, 190, 210).copy(alpha = 0.10f), size = Size(w, h))
+    drawRect(if (day) Color.White.copy(alpha = 0.12f) else Color(170, 190, 210).copy(alpha = 0.10f), size = Size(w, h))
     for (q in input.wipes) {
         val a = wipeStrength(now - q.t)
         val c = Offset(q.x / k, q.y / k)

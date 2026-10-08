@@ -55,8 +55,8 @@ internal fun DrawScope.aurora(w: Float, h: Float, t: Float, phase: Phase, input:
 
     // A still lake catching the lights.
     val ly = h * 0.82f - scroll * 0.16f
-    val lakeTop = when (phase) { Phase.DAY -> 0xFFC9D8E8; Phase.DAWN -> 0xFF6B5B9A; Phase.NIGHT -> 0xFF0E2A3A }
-    val lakeBottom = if (phase == Phase.DAY) 0xFF9FB2C8 else 0xFF050B1F
+    val lakeTop = when (phase) { Phase.DAY -> 0xFFB3C4D8; Phase.DAWN -> 0xFF6B5B9A; Phase.NIGHT -> 0xFF0E2A3A }
+    val lakeBottom = if (phase == Phase.DAY) 0xFF8FA3BB else 0xFF050B1F
     drawRect(Brush.verticalGradient(listOf(Color(lakeTop), Color(lakeBottom)), startY = ly, endY = h), Offset(0f, ly), Size(w, h - ly))
     for (r in 0 until 26) {
         val yy = ly + 3 + r * 4.2f
