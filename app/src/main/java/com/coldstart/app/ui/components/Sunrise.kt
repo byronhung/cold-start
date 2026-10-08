@@ -56,6 +56,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -185,10 +187,12 @@ fun SkyBackground(
 // ---------- touch ----------
 
 /** Press shrinks with a spring, release bounces back. The prototype's `:active` scale. */
+@OptIn(ExperimentalFoundationApi::class)
 fun Modifier.springClick(
     pressedScale: Float = 0.9f,
     enabled: Boolean = true,
     role: Role = Role.Button,
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ): Modifier = composed {
     val source = remember { MutableInteractionSource() }
@@ -197,7 +201,7 @@ fun Modifier.springClick(
     graphicsLayer {
         scaleX = scale
         scaleY = scale
-    }.clickable(source, indication = null, enabled = enabled, role = role, onClick = onClick)
+    }.combinedClickable(source, indication = null, enabled = enabled, role = role, onLongClick = onLongClick, onClick = onClick)
 }
 
 // ---------- surfaces ----------

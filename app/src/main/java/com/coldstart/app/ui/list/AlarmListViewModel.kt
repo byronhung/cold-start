@@ -6,7 +6,10 @@ import com.coldstart.app.alarm.NextAlarm
 import com.coldstart.app.alarm.clockDigits
 import com.coldstart.app.alarm.nextAlarm
 import com.coldstart.app.alarm.period
+import com.coldstart.app.data.Alarm
 import com.coldstart.app.data.AlarmRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -78,5 +81,24 @@ class AlarmListViewModel(
 
     fun setEnabled(id: Long, enabled: Boolean) {
         viewModelScope.launch { repository.setEnabled(id, enabled) }
+    }
+
+    private val _deleted = MutableStateFlow<List<Alarm>>(emptyList())
+
+    /** The last batch deleted from the list, while its Undo is still on offer. */
+    val deleted: StateFlow<List<Alarm>> = _deleted.asStateFlow()
+
+    fun delete(ids: Set<Long>) {
+        viewModelScope.launch { _deleted.value = repository.deleteAll(ids) }
+    }
+
+    fun undoDelete() {
+        val back = _deleted.value
+        _deleted.value = emptyList()
+        viewModelScope.launch { repository.restore(back) }
+    }
+
+    fun dismissUndo() {
+        _deleted.value = emptyList()
     }
 }

@@ -1,5 +1,25 @@
 package com.coldstart.app.ui.list
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.coldstart.app.ui.components.AmberButton
+import com.coldstart.app.ui.theme.ColdShapes
+import com.coldstart.app.ui.theme.Sun
+import kotlinx.coroutines.delay
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -63,7 +83,14 @@ fun AlarmListScreen(
     onSettings: () -> Unit,
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
-    AlarmListContent(ui, onAdd, onEdit, viewModel::setEnabled, onHistory, onSettings)
+    val deleted by viewModel.deleted.collectAsStateWithLifecycle()
+    AlarmListContent(
+        ui, onAdd, onEdit, viewModel::setEnabled, onHistory, onSettings,
+        deletedCount = deleted.size,
+        onDelete = viewModel::delete,
+        onUndo = viewModel::undoDelete,
+        onUndoGone = viewModel::dismissUndo,
+    )
 }
 
 @Composable
@@ -74,7 +101,26 @@ private fun AlarmListContent(
     onToggle: (Long, Boolean) -> Unit,
     onHistory: () -> Unit,
     onSettings: () -> Unit,
+    deletedCount: Int = 0,
+    onDelete: (Set<Long>) -> Unit = {},
+    onUndo: () -> Unit = {},
+    onUndoGone: () -> Unit = {},
 ) {
+    // Long-press a card to start picking; tap more to add them; delete them in one go.
+    var picked by remember { mutableStateOf(emptySet<Long>()) }
+    val picking = picked.isNotEmpty()
+    // An alarm deleted elsewhere (its own edit screen) drops out of the selection.
+    val rowIds = ui?.rows.orEmpty().map { it.id }.toSet()
+    if (ui != null && picked.any { it !in rowIds }) picked = picked intersect rowIds
+    BackHandler(enabled = picking) { picked = emptySet() }
+    val haptics = LocalHapticFeedback.current
+    LaunchedEffect(deletedCount) {
+        if (deletedCount > 0) {
+            delay(5_000)
+            onUndoGone()
+        }
+    }
+
     SkyBackground(LocalSkyTheme.current.forHour(ui?.hour ?: LocalTime.now().hour)) {
         val sky = LocalSky.current
         LazyColumn(
@@ -88,16 +134,41 @@ private fun AlarmListContent(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    LogoMark(sky.ink)
-                    Text("Cold Start", style = ColdText.header, color = sky.ink, modifier = Modifier.weight(1f))
-                    IconSquareButton(SunIcons.History, "History", onHistory)
-                    IconSquareButton(SunIcons.Sliders, "Settings", onSettings)
+                    if (picking) {
+                        IconSquareButton(SunIcons.Back, "Cancel", { picked = emptySet() })
+                        Text("${picked.size} selected", style = ColdText.header, color = sky.ink, modifier = Modifier.weight(1f))
+                        Text(
+                            "All",
+                            style = ColdText.bodyStrong,
+                            color = sky.sunInk,
+                            modifier = Modifier
+                                .springClick(0.92f) { picked = rowIds }
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                        )
+                    } else {
+                        LogoMark(sky.ink)
+                        Text("Cold Start", style = ColdText.header, color = sky.ink, modifier = Modifier.weight(1f))
+                        IconSquareButton(SunIcons.History, "History", onHistory)
+                        IconSquareButton(SunIcons.Sliders, "Settings", onSettings)
+                    }
                 }
             }
             item { Hero(ui) }
             item { SetupCard() }
             itemsIndexed(ui?.rows.orEmpty(), key = { _, row -> row.id }) { i, row ->
-                AlarmCard(row, index = i, onClick = { onEdit(row.id) }, onToggle = { onToggle(row.id, it) })
+                val flip = { picked = if (row.id in picked) picked - row.id else picked + row.id }
+                AlarmCard(
+                    row,
+                    index = i,
+                    picking = picking,
+                    isPicked = row.id in picked,
+                    onClick = { if (picking) flip() else onEdit(row.id) },
+                    onLongClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        flip()
+                    },
+                    onToggle = { onToggle(row.id, it) },
+                )
             }
             if (ui != null && ui.rows.isEmpty()) {
                 item {
@@ -110,14 +181,62 @@ private fun AlarmListContent(
                 }
             }
         }
-        SunFab(
-            onClick = onAdd,
-            label = "Add alarm",
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .safeDrawingPadding()
-                .padding(end = 24.dp, bottom = 30.dp),
-        )
+        if (picking) {
+            AmberButton(
+                "Delete ${picked.size}",
+                onClick = {
+                    onDelete(picked)
+                    picked = emptySet()
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .safeDrawingPadding()
+                    .padding(start = 24.dp, end = 24.dp, bottom = 30.dp)
+                    .fillMaxWidth(),
+                height = 58.dp,
+            )
+        } else {
+            if (deletedCount > 0) {
+                UndoBar(
+                    if (deletedCount == 1) "Alarm deleted" else "$deletedCount alarms deleted",
+                    onUndo,
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .safeDrawingPadding()
+                        .padding(start = 24.dp, end = 112.dp, bottom = 36.dp),
+                )
+            }
+            SunFab(
+                onClick = onAdd,
+                label = "Add alarm",
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .safeDrawingPadding()
+                    .padding(end = 24.dp, bottom = 30.dp),
+            )
+        }
+    }
+}
+
+/** "3 alarms deleted · Undo", for five seconds after a delete. */
+@Composable
+private fun UndoBar(text: String, onUndo: () -> Unit, modifier: Modifier = Modifier) {
+    val sky = LocalSky.current
+    GlassCard(modifier, shape = ColdShapes.button) {
+        Row(
+            Modifier.padding(start = 18.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text, style = ColdText.body, color = sky.ink, modifier = Modifier.weight(1f))
+            Text(
+                "Undo",
+                style = ColdText.bodyStrong,
+                color = sky.sunInk,
+                modifier = Modifier
+                    .springClick(0.92f, onClick = onUndo)
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+            )
+        }
     }
 }
 
@@ -157,7 +276,15 @@ private val DAY_LETTERS = listOf("M", "T", "W", "T", "F", "S", "S")
 /** Glass card: rises in on first show, staggered; fades when switched off. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AlarmCard(row: AlarmRowUi, index: Int, onClick: () -> Unit, onToggle: (Boolean) -> Unit) {
+private fun AlarmCard(
+    row: AlarmRowUi,
+    index: Int,
+    picking: Boolean,
+    isPicked: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onToggle: (Boolean) -> Unit,
+) {
     val sky = LocalSky.current
     val rise = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
@@ -170,9 +297,10 @@ private fun AlarmCard(row: AlarmRowUi, index: Int, onClick: () -> Unit, onToggle
         Modifier
             .fillMaxWidth()
             .graphicsLayer {
-                alpha = rise.value.coerceIn(0f, 1f) * dim
+                alpha = rise.value.coerceIn(0f, 1f) * (if (picking) 1f else dim)
                 translationY = (1f - rise.value) * 16.dp.toPx()
-            },
+            }
+            .border(2.dp, if (isPicked) Sun.ToggleLight else Color.Transparent, ColdShapes.card),
     ) {
         Row(
             Modifier.padding(start = 20.dp, end = 18.dp, top = 18.dp, bottom = 18.dp),
@@ -182,7 +310,7 @@ private fun AlarmCard(row: AlarmRowUi, index: Int, onClick: () -> Unit, onToggle
             Column(
                 Modifier
                     .weight(1f)
-                    .springClick(0.985f, onClick = onClick),
+                    .springClick(0.985f, onLongClick = onLongClick, onClick = onClick),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Row(verticalAlignment = Alignment.Bottom) {
@@ -238,8 +366,26 @@ private fun AlarmCard(row: AlarmRowUi, index: Int, onClick: () -> Unit, onToggle
                     }
                 }
             }
-            SpringToggle(row.enabled, onToggle, label = "${row.time} ${row.period.orEmpty()} on")
+            if (picking) PickMark(isPicked, onClick)
+            else SpringToggle(row.enabled, onToggle, label = "${row.time} ${row.period.orEmpty()} on")
         }
+    }
+}
+
+/** Where the toggle was, while picking: an amber tick when picked, an empty ring when not. */
+@Composable
+private fun PickMark(picked: Boolean, onClick: () -> Unit) {
+    val sky = LocalSky.current
+    Box(
+        Modifier
+            .springClick(0.88f, role = Role.Checkbox, onClick = onClick)
+            .size(30.dp)
+            .clip(CircleShape)
+            .then(if (picked) Modifier.background(Sun.amberBrush) else Modifier.border(2.dp, sky.track, CircleShape))
+            .semantics { contentDescription = if (picked) "Selected" else "Not selected" },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (picked) Icon(SunIcons.Check, contentDescription = null, tint = Sun.OnAmber, modifier = Modifier.size(16.dp))
     }
 }
 

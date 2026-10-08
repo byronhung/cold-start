@@ -78,6 +78,24 @@ class AlarmRepository(
         alarmDao.delete(id)
     }
 
+    /** Deletes several at once. Returns what was deleted, so the list can offer Undo. */
+    suspend fun deleteAll(ids: Collection<Long>): List<Alarm> = mutex.withLock {
+        ids.mapNotNull { id ->
+            alarmDao.get(id)?.also {
+                scheduler.cancel(id)
+                alarmDao.delete(id)
+            }
+        }
+    }
+
+    /** Undo: puts alarms back with their old ids, so History still names them, and schedules them. */
+    suspend fun restore(alarms: List<Alarm>) = mutex.withLock {
+        alarms.forEach {
+            alarmDao.insert(it)
+            applySchedule(it)
+        }
+    }
+
     /** After a reboot, a clock change, a force-stop, or any app start: make Android match the table. */
     suspend fun rescheduleAll() = mutex.withLock {
         alarmDao.getAll().forEach { applySchedule(it) }
