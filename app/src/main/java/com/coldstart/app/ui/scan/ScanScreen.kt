@@ -103,7 +103,7 @@ fun ScanScreen(onCode: (String) -> Unit, onBack: () -> Unit) {
                 )
                 QuietButton(if (torch) "Torch off" else "Torch on", { torch = !torch }, Modifier.align(Alignment.CenterHorizontally))
             } else {
-                Text("Cold Start needs the camera to read the code.", style = ColdText.body, color = sky.mute)
+                Text("First Light needs the camera to read the code.", style = ColdText.body, color = sky.mute)
                 AmberButton("Allow camera", { ask.launch(Manifest.permission.CAMERA) })
             }
         }

@@ -54,7 +54,7 @@ object ColdText {
     /** Screen titles: "Settings". */
     val title = TextStyle(fontFamily = Outfit, fontWeight = FontWeight.SemiBold, fontSize = 26.sp, letterSpacing = (-0.01).em)
 
-    /** The app name and small headers: "Cold Start", "Edit alarm". */
+    /** The app name and small headers: "First Light", "Edit alarm". */
     val header = TextStyle(fontFamily = Outfit, fontWeight = FontWeight.SemiBold, fontSize = 19.sp, letterSpacing = (-0.01).em)
 
     /** The Stroop word. */

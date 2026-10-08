@@ -76,7 +76,7 @@ fun BoxScope.PlusSheet(reason: String?, onDismiss: () -> Unit) {
                     .clip(RoundedCornerShape(3.dp))
                     .background(Color.White.copy(alpha = 0.3f)),
             )
-            Text("COLD START PLUS", style = ColdText.label, color = Sun.ToggleLight)
+            Text("FIRST LIGHT PLUS", style = ColdText.label, color = Sun.ToggleLight)
             Text(shown, style = ColdText.display.copy(fontSize = 28.sp, lineHeight = 32.sp), color = Sun.OnGlass)
             Text(
                 "Plus adds Memory pairs, Connect the path and Slide out, and four new skies you can " +

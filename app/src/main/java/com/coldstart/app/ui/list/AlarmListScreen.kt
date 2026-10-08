@@ -147,7 +147,7 @@ private fun AlarmListContent(
                         )
                     } else {
                         LogoMark(sky.ink)
-                        Text("Cold Start", style = ColdText.header, color = sky.ink, modifier = Modifier.weight(1f))
+                        Text("First Light", style = ColdText.header, color = sky.ink, modifier = Modifier.weight(1f))
                         IconSquareButton(SunIcons.History, "History", onHistory)
                         IconSquareButton(SunIcons.Sliders, "Settings", onSettings)
                     }

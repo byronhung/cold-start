@@ -52,7 +52,7 @@ fun QrPuzzle(expected: String, onMiss: () -> Unit, onSolved: () -> Unit, onCantS
         PuzzlePrompt("Walk to your wake-up code and scan it")
         if (!hasCamera) {
             Text(
-                "Cold Start isn't allowed to use the camera, so this round can't run. Hold to give up, " +
+                "First Light isn't allowed to use the camera, so this round can't run. Hold to give up, " +
                     "then allow the camera when you register your code in Settings.",
                 style = ColdText.caption,
                 color = Sun.OnGlass.copy(alpha = 0.7f),

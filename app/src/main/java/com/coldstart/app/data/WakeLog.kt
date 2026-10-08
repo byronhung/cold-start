@@ -33,7 +33,7 @@ data class AppSettings(
     val puzzleMix: String? = null,
     /** [com.coldstart.app.puzzle.Preset.code] used by every alarm that doesn't override it. */
     @ColumnInfo(defaultValue = "1") val defaultDifficulty: Int = 1,
-    /** Cold Start Plus unlocked. Until Google Play Billing (chunk P11), set by a debug switch. */
+    /** First Light Plus unlocked. Until Google Play Billing (chunk P11), set by a debug switch. */
     @ColumnInfo(defaultValue = "0") val isPlus: Boolean = false,
     /** [com.coldstart.app.ui.theme.SkyTheme.code]. 0 = Sunrise, the free one. */
     @ColumnInfo(defaultValue = "0") val theme: Int = 0,

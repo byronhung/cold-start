@@ -13,7 +13,7 @@ enum class Phase { NIGHT, DAWN, DAY }
  * A theme is a whole day of skies plus a scene, from the Plus mockups
  * (claude.ai/artifact/RJ5hJG9ZUmeCjKF3fH7S6f, "Five skies"). Every theme has the same eight hour stops
  * as Sunrise, so the list screen turns from night to day the same way whichever one you pick.
- * Saved by [code] in Settings; [plus] themes need Cold Start Plus.
+ * Saved by [code] in Settings; [plus] themes need First Light Plus.
  */
 enum class SkyTheme(
     val code: Int,

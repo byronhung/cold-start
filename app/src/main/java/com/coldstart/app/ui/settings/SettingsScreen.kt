@@ -174,7 +174,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onScan: () -> Unit, onBack: () 
                                         modifier = Modifier.weight(1f),
                                         onTap = {
                                             when {
-                                                entry.plus && !current.isPlus -> plusReason = "${entry.name} is part of Cold Start Plus."
+                                                entry.plus && !current.isPlus -> plusReason = "${entry.name} is part of First Light Plus."
                                                 entry.type == null -> mixNote = "${entry.name} is coming soon."
                                                 !viewModel.toggle(entry.type) -> mixNote = "At least $MIN_MIX stay on, so mornings never just alternate."
                                                 else -> mixNote = null
@@ -264,7 +264,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onScan: () -> Unit, onBack: () 
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     SectionLabel("How it works")
                     Step(1, "Scan any barcode or QR code that lives away from your bed. Toothpaste, a cereal box, the kettle. Nothing to print.")
-                    Step(2, "Cold Start saves the number under the bars. It never looks the product up.")
+                    Step(2, "First Light saves the number under the bars. It never looks the product up.")
                     Step(3, "Alarms set to Scan or Both stop only when you walk there and scan it.")
                 }
             }
@@ -430,7 +430,7 @@ private fun PlusTeaser(onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text("Cold Start Plus", style = ColdText.bodyStrong, color = sky.ink)
+            Text("First Light Plus", style = ColdText.bodyStrong, color = sky.ink)
             Text("3 puzzles and 4 skies. Pay once.", style = ColdText.caption, color = sky.dim)
         }
         Text("See", style = ColdText.bodyStrong, color = Sun.ToggleLight)

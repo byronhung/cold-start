@@ -104,7 +104,7 @@ fun SetupCard() {
                 }
             }
             if (!checks.battery) {
-                SetupRow("Remove battery limits", "Stops the phone putting Cold Start to sleep overnight.") {
+                SetupRow("Remove battery limits", "Stops the phone putting First Light to sleep overnight.") {
                     @Suppress("BatteryLife")
                     context.startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, pkg))
                 }
