@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
@@ -86,6 +87,13 @@ fun BoxScope.PuzzlePreviewSheet(type: RoundType?, name: String, onGetPlus: () ->
     }
     var round by remember { mutableIntStateOf(0) }
     var solved by remember { mutableStateOf(false) }
+    // Every time a preview opens it starts unsolved, whichever puzzle was tried before.
+    LaunchedEffect(type) {
+        if (type != null) {
+            solved = false
+            round++
+        }
+    }
     BackHandler(enabled = type != null, onBack = onDismiss)
 
     AnimatedVisibility(type != null, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.matchParentSize()) {

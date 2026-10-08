@@ -13,6 +13,9 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -68,13 +71,13 @@ import com.byronhung.firstlight.ui.theme.LocalSkyTheme
 import com.byronhung.firstlight.ui.theme.Sun
 import kotlinx.coroutines.delay
 
-private const val STEPS = 5
-private const val PERMISSIONS_STEP = 4
+private const val STEPS = 6
+private const val PERMISSIONS_STEP = 5
 
 /**
  * The first-run welcome, from the approved mockup (claude.ai/artifact/3BdabayPCjA5BD57hGj6LC):
- * what the app is, a real puzzle to play, tap-to-quiet, registering a code, and the permissions
- * alarms need. Skip jumps to the permissions, since those are the one step that really matters.
+ * what the app is, a real puzzle to play, tap-to-quiet, registering a code, where your mornings
+ * are kept, and the permissions alarms need. Skip jumps to the permissions, since those are the one step that really matters.
  * Settings › "How First Light works" replays it ([replay]: no "set my first alarm" at the end).
  *
  * [wakeCode] is the registered code, if any; [onScan] opens the real scanner, which saves the code
@@ -115,6 +118,7 @@ fun WelcomeScreen(wakeCode: String?, replay: Boolean, onScan: () -> Unit, onDone
                         1 -> TryOne(next = { step = 2 })
                         2 -> Quiet(next = { step = 3 })
                         3 -> Scan(wakeCode, onScan, next = { step = 4 })
+                        4 -> YourMonth(next = { step = 5 })
                         else -> Permissions(replay, onDone)
                     }
                 }
@@ -323,6 +327,90 @@ private fun Viewfinder() {
 }
 
 private val BARS = listOf(3, 1, 2, 1, 4, 1, 1, 3, 2, 1, 1, 2, 3, 1, 2, 1, 1, 4, 1, 2, 2, 1, 3, 1, 2, 2, 1, 3, 2, 1, 3)
+
+/** History, shown with an example week: the calendar's dots and the time you were really up. */
+@Composable
+private fun ColumnScope.YourMonth(next: () -> Unit) {
+    Step(
+        label = "Your mornings",
+        title = "Every morning lands here.",
+        body = "History keeps a calendar of your month and the time you were actually up each day. " +
+            "It's under the clock icon on the home screen.",
+        buttons = { AmberButton("Next", next, Modifier.fillMaxWidth(), height = 56.dp) },
+    ) {
+        PuzzleGlass(contentAlignment = Alignment.TopStart) {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                SectionLabel("Example week", color = Sun.OnGlass.copy(alpha = 0.55f))
+                Row(Modifier.fillMaxWidth()) {
+                    EXAMPLE_WEEK.forEachIndexed { i, mark ->
+                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(DAYS[i], style = AppText.chip.copy(fontSize = 11.sp), color = Sun.OnGlass.copy(alpha = 0.5f))
+                            DayDot(i + 5, mark)
+                        }
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Legend(1, "Up")
+                    Legend(2, "Rang again")
+                    Legend(3, "Gave up")
+                }
+                Box(Modifier.fillMaxWidth().height(1.dp).background(Sun.OnGlass.copy(alpha = 0.12f)))
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    SectionLabel("Thu 8 Oct · 6:30 AM", color = Sun.OnGlass.copy(alpha = 0.55f))
+                    Text("Up at 6:34 AM", style = AppText.bodyStrong, color = Sun.Glow)
+                    Text("1 wake check passed", style = AppText.caption, color = Sun.OnGlass.copy(alpha = 0.7f))
+                }
+            }
+        }
+    }
+}
+
+private val DAYS = listOf("M", "T", "W", "T", "F", "S", "S")
+
+/** 1 up, 2 rang again, 3 gave up, 0 no alarm. */
+private val EXAMPLE_WEEK = listOf(1, 1, 2, 1, 1, 0, 3)
+
+@Composable
+private fun DayDot(day: Int, mark: Int) {
+    Box(
+        Modifier
+            .size(32.dp)
+            .clip(CircleShape)
+            .drawBehind {
+                when (mark) {
+                    1 -> drawCircle(Sun.ToggleLight)
+                    2 -> drawArc(Sun.ToggleLight, 90f, 180f, useCenter = true)
+                }
+            }
+            .border(1.dp, if (mark == 2 || mark == 3) Sun.OnGlass.copy(alpha = 0.45f) else Color.Transparent, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            "$day",
+            style = AppText.chip.copy(fontSize = 11.sp),
+            color = if (mark == 1) Sun.OnAmber else Sun.OnGlass.copy(alpha = if (mark == 0) 0.5f else 1f),
+        )
+    }
+}
+
+@Composable
+private fun Legend(mark: Int, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Box(
+            Modifier
+                .size(11.dp)
+                .clip(CircleShape)
+                .drawBehind {
+                    when (mark) {
+                        1 -> drawCircle(Sun.ToggleLight)
+                        2 -> drawArc(Sun.ToggleLight, 90f, 180f, useCenter = true)
+                    }
+                }
+                .border(1.dp, if (mark == 1) Color.Transparent else Sun.OnGlass.copy(alpha = 0.45f), CircleShape),
+        )
+        Text(text, style = AppText.caption.copy(fontSize = 12.sp), color = Sun.OnGlass.copy(alpha = 0.75f))
+    }
+}
 
 /** The one step that matters: what the phone must allow. Never blocks, since some phones refuse. */
 @Composable
