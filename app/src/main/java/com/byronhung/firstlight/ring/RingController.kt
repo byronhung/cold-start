@@ -28,6 +28,8 @@ data class RingSession(
     val preset: Preset = Preset.NORMAL,
     /** Null = the phone's default alarm sound. */
     val soundUri: String? = null,
+    /** "Test this alarm" from the editor: rings for real, but nothing is logged or scheduled. */
+    val isTest: Boolean = false,
 )
 
 /** A solved round, before it's written to the database. */
@@ -57,6 +59,9 @@ class RingController(
     val state: StateFlow<RingState> = _state.asStateFlow()
 
     val isActive: Boolean get() = _state.value != RingState.Idle
+
+    /** A test ring handed over by the editor, picked up by [RingService] when it starts. */
+    @Volatile var pendingTest: RingSession? = null
 
     private val _lastTap = MutableStateFlow<Long?>(null)
 

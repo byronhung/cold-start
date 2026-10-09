@@ -17,6 +17,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.byronhung.firstlight.ring.RingService
+import com.byronhung.firstlight.ring.RingActivity
+import com.byronhung.firstlight.FirstLightApp
+import androidx.core.content.ContextCompat
+import android.content.Intent
+import android.content.Context
 import java.time.LocalTime
 
 /** Everything the form holds, the time included: the wheel picker reports as it turns. */
@@ -123,27 +129,42 @@ class AlarmEditViewModel(
         pendingMethod = null
     }
 
+    /** The alarm as it stands on screen, saved or not. */
+    private fun asAlarm(d: EditDraft): Alarm = (original ?: Alarm(hour = d.hour, minute = d.minute)).copy(
+        hour = d.hour,
+        minute = d.minute,
+        repeatDays = d.repeatDays,
+        label = d.label.trim(),
+        wakeChecks = d.wakeChecks,
+        wakeMethod = d.wakeMethod,
+        difficulty = d.difficulty,
+        soundUri = d.soundUri,
+        enabled = true,
+    )
+
     /** Saving always turns the alarm on: you just set it, so you want it. */
     fun save(onDone: () -> Unit) {
         val d = draft ?: return
         if (busy) return
         busy = true
         viewModelScope.launch {
-            val base = original ?: Alarm(hour = d.hour, minute = d.minute)
-            repository.save(
-                base.copy(
-                    hour = d.hour,
-                    minute = d.minute,
-                    repeatDays = d.repeatDays,
-                    label = d.label.trim(),
-                    wakeChecks = d.wakeChecks,
-                    wakeMethod = d.wakeMethod,
-                    difficulty = d.difficulty,
-                    soundUri = d.soundUri,
-                    enabled = true,
-                ),
-            )
+            repository.save(asAlarm(d))
             onDone()
+        }
+    }
+
+    /**
+     * "Test this alarm": rings it now, exactly as set on screen (sound, puzzles, difficulty, scan),
+     * without saving it or logging anything. Does nothing while a real alarm is ringing.
+     */
+    fun test(context: Context) {
+        val d = draft ?: return
+        val app = context.applicationContext as FirstLightApp
+        if (app.ringController.isActive) return
+        viewModelScope.launch {
+            app.ringController.pendingTest = repository.testSession(asAlarm(d))
+            ContextCompat.startForegroundService(context, RingService.testIntent(context))
+            context.startActivity(Intent(context, RingActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
     }
 

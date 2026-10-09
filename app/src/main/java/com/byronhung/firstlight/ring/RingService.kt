@@ -40,12 +40,13 @@ class RingService : Service() {
         val controller = app.ringController
         val alarmId = intent?.getLongExtra(EXTRA_ALARM_ID, -1L) ?: -1L
         val isRering = intent?.getBooleanExtra(EXTRA_RERING, false) ?: false
-        if (alarmId < 0) {
+        val isTest = intent?.getBooleanExtra(EXTRA_TEST, false) ?: false
+        if (alarmId < 0 && !isTest) {
             if (!controller.isActive) shutDown()
             return START_NOT_STICKY
         }
         if (controller.isActive) {
-            if (!isRering) scope.launch { app.repository.skipWake(alarmId) }
+            if (!isRering && !isTest) scope.launch { app.repository.skipWake(alarmId) }
             return START_REDELIVER_INTENT
         }
 
@@ -57,7 +58,8 @@ class RingService : Service() {
             shutDown()
         }
         scope.launch {
-            val session = app.repository.beginWake(alarmId, isRering = isRering)
+            val session = if (isTest) controller.pendingTest.also { controller.pendingTest = null }
+            else app.repository.beginWake(alarmId, isRering = isRering)
             if (session == null) {
                 controller.abort()
                 return@launch
@@ -76,7 +78,8 @@ class RingService : Service() {
             controller.finish(WakeOutcome.TIMED_OUT, emptyList())
         }
         // If Android kills us mid-ring, it restarts the service with this same intent: it rings again.
-        return START_REDELIVER_INTENT
+        // A test ring isn't worth bringing back.
+        return if (isTest) START_NOT_STICKY else START_REDELIVER_INTENT
     }
 
     private fun currentSession(): RingSession? =
@@ -121,6 +124,7 @@ class RingService : Service() {
         private const val TAG = "RingService"
         private const val EXTRA_ALARM_ID = "alarmId"
         private const val EXTRA_RERING = "rering"
+        private const val EXTRA_TEST = "test"
 
         /** An alarm nobody answers stops after an hour, logged as timed out. */
         const val RING_TIMEOUT_MS = 60 * 60 * 1000L
@@ -130,5 +134,9 @@ class RingService : Service() {
             Intent(context, RingService::class.java)
                 .putExtra(EXTRA_ALARM_ID, alarmId)
                 .putExtra(EXTRA_RERING, isRering)
+
+        /** Rings [RingController.pendingTest]. */
+        fun testIntent(context: Context): Intent =
+            Intent(context, RingService::class.java).putExtra(EXTRA_TEST, true)
     }
 }

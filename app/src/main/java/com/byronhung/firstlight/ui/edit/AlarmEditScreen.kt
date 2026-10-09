@@ -56,6 +56,7 @@ import com.byronhung.firstlight.ui.components.GlassCard
 import com.byronhung.firstlight.ui.components.SectionLabel
 import com.byronhung.firstlight.ui.components.Segmented
 import com.byronhung.firstlight.ui.components.SkyBackground
+import com.byronhung.firstlight.ui.components.QuietButton
 import com.byronhung.firstlight.ui.components.SpringToggle
 import com.byronhung.firstlight.ui.components.WheelColumn
 import com.byronhung.firstlight.ui.components.springClick
@@ -71,6 +72,7 @@ import java.time.LocalTime
 fun AlarmEditScreen(viewModel: AlarmEditViewModel, onScanForCode: () -> Unit, onDone: () -> Unit) {
     val wakeCode by viewModel.wakeCode.collectAsStateWithLifecycle()
     val defaultDifficulty by viewModel.defaultDifficulty.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     SkyBackground(LocalSkyTheme.current.forHour(LocalTime.now().hour), calm = true) {
         val draft = viewModel.draft ?: return@SkyBackground
         AlarmEditContent(
@@ -87,6 +89,7 @@ fun AlarmEditScreen(viewModel: AlarmEditViewModel, onScanForCode: () -> Unit, on
             onSound = viewModel::setSound,
             onLabel = viewModel::setLabel,
             onDelete = { viewModel.delete(onDone) },
+            onTest = { viewModel.test(context) },
         )
     }
 }
@@ -109,6 +112,7 @@ private fun AlarmEditContent(
     onSound: (String?) -> Unit,
     onLabel: (String) -> Unit,
     onDelete: () -> Unit,
+    onTest: () -> Unit,
 ) {
     val sky = LocalSky.current
     val is24Hour = DateFormat.is24HourFormat(LocalContext.current)
@@ -234,6 +238,9 @@ private fun AlarmEditContent(
                     },
                 )
             }
+
+            // Hear it and try its puzzles before trusting it overnight. Nothing is saved or logged.
+            QuietButton("Test this alarm", onTest, Modifier.fillMaxWidth().padding(top = 6.dp))
 
             if (!draft.isNew) {
                 Text(

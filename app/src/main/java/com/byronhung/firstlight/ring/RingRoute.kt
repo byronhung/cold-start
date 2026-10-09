@@ -83,8 +83,8 @@ import kotlin.random.Random
 const val GIVE_UP_HOLD_MS = 30_000L
 
 private sealed interface Ending {
-    data class Solved(val totalMs: Long, val checks: Int, val noScan: Boolean) : Ending
-    data object GaveUp : Ending
+    data class Solved(val totalMs: Long, val checks: Int, val noScan: Boolean, val test: Boolean = false) : Ending
+    data class GaveUp(val test: Boolean = false) : Ending
 }
 
 @Composable
@@ -113,11 +113,11 @@ fun RingRoute(controller: RingController, is24Hour: Boolean, onClose: () -> Unit
                     quiet = quiet,
                     onPuzzleTap = { controller.puzzleTapped() },
                     onSolved = { results, totalMs, noScan ->
-                        ending = Ending.Solved(totalMs, session.wakeChecks, noScan)
+                        ending = Ending.Solved(totalMs, session.wakeChecks, noScan, session.isTest)
                         controller.finish(if (noScan) WakeOutcome.NO_SCAN else WakeOutcome.SOLVED, results)
                     },
                     onGiveUp = { results ->
-                        ending = Ending.GaveUp
+                        ending = Ending.GaveUp(session.isTest)
                         controller.finish(WakeOutcome.GAVE_UP, results)
                     },
                 )
@@ -356,7 +356,9 @@ private fun EndScreen(ending: Ending, is24Hour: Boolean, onClose: () -> Unit) {
                 is Ending.Solved -> {
                     Text("Good morning", style = AppText.display.copy(fontSize = 54.sp), color = Sun.OnGlass)
                     Text("Solved in ${formatDuration(ending.totalMs)}", style = AppText.bodyStrong.copy(fontSize = 18.sp), color = Sun.Glow)
-                    if (ending.noScan) {
+                    if (ending.test) {
+                        Text("That was a test. Nothing went in History.", style = AppText.body.copy(fontSize = 15.sp), color = Sun.OnGlass.copy(alpha = 0.82f))
+                    } else if (ending.noScan) {
                         Text("Logged as no scan in History.", style = AppText.body.copy(fontSize = 15.sp), color = Sun.OnGlass.copy(alpha = 0.82f))
                     }
                     if (ending.checks > 0) {
@@ -371,9 +373,13 @@ private fun EndScreen(ending: Ending, is24Hour: Boolean, onClose: () -> Unit) {
                         )
                     }
                 }
-                Ending.GaveUp -> {
+                is Ending.GaveUp -> {
                     Text("Alarm stopped", style = AppText.display.copy(fontSize = 48.sp), color = Sun.OnGlass)
-                    Text("Logged as a give-up in History.", style = AppText.body, color = Sun.OnGlass.copy(alpha = 0.82f))
+                    Text(
+                        if (ending.test) "That was a test. Nothing went in History." else "Logged as a give-up in History.",
+                        style = AppText.body,
+                        color = Sun.OnGlass.copy(alpha = 0.82f),
+                    )
                 }
             }
             Box(

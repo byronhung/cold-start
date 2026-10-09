@@ -139,6 +139,24 @@ class AlarmRepository(
         // A ring takes over from any waiting wake check: this morning's solve sets a fresh one.
         cancelPendingCheck()
 
+        val planned = plan(alarm)
+        val wakeId = wakeDao.insertWake(
+            WakeLog(alarmId = alarmId, firedAt = System.currentTimeMillis(), opener = planned.rounds.first()),
+        )
+        planned.copy(wakeId = wakeId)
+    }
+
+    /**
+     * "Test this alarm": the same morning [alarm] would get (unsaved edits included), flagged as a
+     * test. It writes nothing, schedules nothing, and never sets a wake check.
+     */
+    suspend fun testSession(alarm: Alarm): RingSession = mutex.withLock {
+        val planned = plan(alarm)
+        planned.copy(isTest = true, wakeChecks = 0, label = if (alarm.label.isBlank()) "Test" else "Test · ${alarm.label}")
+    }
+
+    /** Plans a morning for [alarm]: puzzles, levels, the scan. No side effects; wakeId is unset. */
+    private suspend fun plan(alarm: Alarm): RingSession {
         val settings = wakeDao.settings() ?: AppSettings()
         val wakeCode = settings.wakeCode
         // The mix is app-wide now (Settings); the alarm's own roundTypes column is no longer read.
@@ -153,12 +171,9 @@ class AlarmRepository(
         )
         val levels = puzzles.associateWith { preset.level(adaptive = levelFor(it)) }
 
-        val wakeId = wakeDao.insertWake(
-            WakeLog(alarmId = alarmId, firedAt = System.currentTimeMillis(), opener = rounds.first()),
-        )
-        RingSession(
+        return RingSession(
             alarmId = alarm.id,
-            wakeId = wakeId,
+            wakeId = -1,
             hour = alarm.hour,
             minute = alarm.minute,
             label = alarm.label,
@@ -195,6 +210,7 @@ class AlarmRepository(
      * solve counts, so "Can't scan now?" tapped in bed still has a check waiting.
      */
     suspend fun finishWake(session: RingSession, outcome: WakeOutcome, results: List<RoundResultDraft>) {
+        if (session.isTest) return
         val wakeId = session.wakeId
         wakeDao.finish(wakeId, System.currentTimeMillis(), outcome.name)
         // Only Normal mornings teach the automatic difficulty: a Gentle or Hard one says nothing
