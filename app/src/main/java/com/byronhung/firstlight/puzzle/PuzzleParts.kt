@@ -85,7 +85,7 @@ fun MissNote(missCount: Int, text: String = "Not that one.") {
 fun inkColour(ink: InkColour): Color = when (ink) {
     InkColour.RED -> Sun.PuzzleRed
     InkColour.BLUE -> Sun.PuzzleBlue
-    InkColour.GREEN -> Sun.PuzzleGreen
+    InkColour.PINK -> Sun.PuzzlePink
     InkColour.YELLOW -> Sun.PuzzleYellow
 }
 

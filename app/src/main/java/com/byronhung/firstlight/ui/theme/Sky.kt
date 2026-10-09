@@ -62,10 +62,12 @@ object Sun {
     val PuzzleGlass = Color(0xFF160C2A).copy(alpha = 0.55f)
     val OnGlass = Color(0xFFFFF6EC)
 
-    val PuzzleRed = Color(0xFFFF6B7A)
-    val PuzzleBlue = Color(0xFF6EA8FF)
+    // Tuned for colour-blind players: see InkColour. Each also differs in brightness.
+    val PuzzleRed = Color(0xFFE8433A)
+    val PuzzleBlue = Color(0xFF4A6BFF)
     val PuzzleGreen = Color(0xFF5FD08A)
-    val PuzzleYellow = Color(0xFFFFD166)
+    val PuzzleYellow = Color(0xFFFFF07A)
+    val PuzzlePink = Color(0xFFFFA6E0)
 
     val amberBrush: Brush get() = Brush.linearGradient(listOf(AmberLight, Amber))
     val toggleBrush: Brush get() = Brush.linearGradient(listOf(ToggleLight, Amber))

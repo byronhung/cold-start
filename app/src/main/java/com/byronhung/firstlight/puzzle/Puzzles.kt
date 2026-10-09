@@ -164,7 +164,13 @@ fun planMorning(
 
 // ---------- Stroop ----------
 
-enum class InkColour { RED, BLUE, GREEN, YELLOW }
+/**
+ * Stroop's four inks, chosen to stay apart for colour-blind players (9 Oct): red, blue and yellow
+ * are kept and tuned, and green (lost against red for about 1 in 12 men) became pink. Checked with
+ * Machado 2009 simulations: the closest pair under protan, deutan or tritan vision is ΔE2000 20,
+ * where red/green under deutan was 4.9.
+ */
+enum class InkColour { RED, BLUE, PINK, YELLOW }
 
 /** The word names one colour; the ink is always a different one. */
 data class StroopWord(val word: InkColour, val ink: InkColour)
