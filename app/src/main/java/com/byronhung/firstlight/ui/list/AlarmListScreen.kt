@@ -371,6 +371,7 @@ private fun AlarmCard(
                         color = sky.mute,
                         modifier = Modifier.align(Alignment.CenterVertically),
                     )
+                    if (row.skipping != null) Chip(row.skipping)
                     if (row.wakeChecks > 0) Chip(if (row.wakeChecks == 1) "1 check" else "${row.wakeChecks} checks", SunIcons.Check)
                     when (WakeMethod.of(row.wakeMethod)) {
                         WakeMethod.SCAN -> Chip("Scan only", SunIcons.Scan)

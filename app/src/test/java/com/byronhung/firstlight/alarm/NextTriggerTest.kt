@@ -108,4 +108,29 @@ class NextTriggerTest {
         assertNull(nextAlarm(listOf(Alarm(hour = 6, minute = 30)), friday2241, is24Hour = true)!!.period)
         assertNull(nextAlarm(listOf(Alarm(hour = 6, minute = 30, enabled = false)), friday2241, is24Hour = false))
     }
+
+    // ---------- skip next ----------
+
+    private val weekdays = 0b0011111
+
+    @Test fun `skipping the next ring jumps to the one after`() {
+        // Friday 22:41: next weekday 7:00 is Monday 5 Oct. Skip it, and it's Tuesday 6 Oct.
+        val monday7 = LocalDateTime.of(2026, 10, 5, 7, 0)
+        assertEquals(LocalDateTime.of(2026, 10, 6, 7, 0), nextTrigger(7, 0, weekdays, friday2241, skip = monday7))
+    }
+
+    @Test fun `a skip that has passed changes nothing`() {
+        val lastMonday = LocalDateTime.of(2026, 9, 28, 7, 0)
+        assertEquals(LocalDateTime.of(2026, 10, 5, 7, 0), nextTrigger(7, 0, weekdays, friday2241, skip = lastMonday))
+    }
+
+    @Test fun `a skip that doesn't line up with the next ring changes nothing`() {
+        val tuesday = LocalDateTime.of(2026, 10, 6, 7, 0)
+        assertEquals(LocalDateTime.of(2026, 10, 5, 7, 0), nextTrigger(7, 0, weekdays, friday2241, skip = tuesday))
+    }
+
+    @Test fun `one-off alarms never skip`() {
+        val saturday7 = LocalDateTime.of(2026, 10, 3, 7, 0)
+        assertEquals(saturday7, nextTrigger(7, 0, Weekdays.NONE, friday2241, skip = saturday7))
+    }
 }

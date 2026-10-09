@@ -17,6 +17,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.ZoneId
+import java.time.LocalDateTime
+import com.byronhung.firstlight.alarm.plainNextTrigger
+import com.byronhung.firstlight.alarm.isSkippingNext
 import com.byronhung.firstlight.ring.RingService
 import com.byronhung.firstlight.ring.RingActivity
 import com.byronhung.firstlight.FirstLightApp
@@ -40,6 +44,8 @@ data class EditDraft(
     val soundUri: String?,
     val isNew: Boolean,
     val gentleStart: Boolean = true,
+    /** Skip the next ring (repeating alarms only). */
+    val skipNext: Boolean = false,
 )
 
 /** [alarmId] null = adding a new alarm. */
@@ -67,7 +73,7 @@ class AlarmEditViewModel(
                 val alarm = repository.get(alarmId)
                 original = alarm
                 draft = alarm?.let {
-                    EditDraft(it.hour, it.minute, it.repeatDays, it.label, it.wakeChecks, it.wakeMethod, it.difficulty, it.soundUri, isNew = false, gentleStart = it.gentleStart)
+                    EditDraft(it.hour, it.minute, it.repeatDays, it.label, it.wakeChecks, it.wakeMethod, it.difficulty, it.soundUri, isNew = false, gentleStart = it.gentleStart, skipNext = it.isSkippingNext(LocalDateTime.now()))
                 } ?: newDraft()
             }
         }
@@ -103,6 +109,10 @@ class AlarmEditViewModel(
 
     fun setGentle(on: Boolean) {
         draft = draft?.copy(gentleStart = on)
+    }
+
+    fun setSkipNext(on: Boolean) {
+        draft = draft?.copy(skipNext = on)
     }
 
     /** [code]: a [Preset.code], or [FOLLOW_DEFAULT]. */
@@ -146,7 +156,11 @@ class AlarmEditViewModel(
         soundUri = d.soundUri,
         gentleStart = d.gentleStart,
         enabled = true,
-    )
+    ).let { a ->
+        // The ring being skipped is worked out from the time and days as they are now, at save.
+        val skip = d.skipNext && d.repeatDays != Weekdays.NONE
+        a.copy(skipAt = if (skip) a.plainNextTrigger(LocalDateTime.now()).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() else 0)
+    }
 
     /** Saving always turns the alarm on: you just set it, so you want it. */
     fun save(onDone: () -> Unit) {

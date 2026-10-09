@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.byronhung.firstlight.alarm.NextAlarm
 import com.byronhung.firstlight.alarm.clockDigits
 import com.byronhung.firstlight.alarm.nextAlarm
+import com.byronhung.firstlight.alarm.plainNextTrigger
+import com.byronhung.firstlight.alarm.isSkippingNext
 import com.byronhung.firstlight.alarm.period
 import com.byronhung.firstlight.data.Alarm
 import com.byronhung.firstlight.data.AlarmRepository
@@ -37,6 +39,8 @@ data class AlarmRowUi(
     val wakeMethod: Int,
     /** [com.byronhung.firstlight.puzzle.Preset.code]. */
     val difficulty: Int = 1,
+    /** "Skips Mon" when skip next is on, else null. */
+    val skipping: String? = null,
 )
 
 data class AlarmListUi(
@@ -76,6 +80,11 @@ class AlarmListViewModel(
                     wakeChecks = it.wakeChecks,
                     wakeMethod = it.wakeMethod,
                     difficulty = it.difficulty,
+                    skipping = if (it.enabled && it.isSkippingNext(now)) {
+                        "Skips " + it.plainNextTrigger(now).dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.ENGLISH)
+                    } else {
+                        null
+                    },
                 )
             },
             next = nextAlarm(alarms, now, is24Hour),

@@ -40,7 +40,25 @@ fun nextTrigger(hour: Int, minute: Int, repeatDays: Int, now: LocalDateTime): Lo
     error("No trigger within 8 days for repeatDays=$repeatDays")
 }
 
-fun Alarm.nextTrigger(now: LocalDateTime): LocalDateTime = nextTrigger(hour, minute, repeatDays, now)
+/**
+ * The next ring, jumping over [skip] (skip next) when that's the one coming up. A skip that has
+ * passed, or that no longer lines up with the alarm's days, simply matches nothing.
+ */
+fun nextTrigger(hour: Int, minute: Int, repeatDays: Int, now: LocalDateTime, skip: LocalDateTime?): LocalDateTime {
+    val next = nextTrigger(hour, minute, repeatDays, now)
+    return if (skip != null && next == skip && repeatDays != Weekdays.NONE) nextTrigger(hour, minute, repeatDays, next) else next
+}
+
+/** The next ring this alarm would have, skip or not: what "skip next" skips. */
+fun Alarm.plainNextTrigger(now: LocalDateTime): LocalDateTime = nextTrigger(hour, minute, repeatDays, now)
+
+fun Alarm.skipTime(): LocalDateTime? =
+    if (skipAt <= 0) null else LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(skipAt), java.time.ZoneId.systemDefault())
+
+fun Alarm.nextTrigger(now: LocalDateTime): LocalDateTime = nextTrigger(hour, minute, repeatDays, now, skipTime())
+
+/** The upcoming ring is being skipped. */
+fun Alarm.isSkippingNext(now: LocalDateTime): Boolean = skipTime()?.let { it == plainNextTrigger(now) && repeatDays != Weekdays.NONE } == true
 
 /** "06:30" on a 24-hour phone, "6:30 AM" on a 12-hour one. */
 fun formatTime(hour: Int, minute: Int, is24Hour: Boolean = true): String =

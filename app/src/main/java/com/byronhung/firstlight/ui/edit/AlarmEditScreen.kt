@@ -57,6 +57,7 @@ import com.byronhung.firstlight.ui.components.SectionLabel
 import com.byronhung.firstlight.ui.components.Segmented
 import com.byronhung.firstlight.ui.components.SkyBackground
 import com.byronhung.firstlight.ui.components.QuietButton
+import com.byronhung.firstlight.alarm.nextTrigger
 import com.byronhung.firstlight.ui.components.SpringToggle
 import com.byronhung.firstlight.ui.components.WheelColumn
 import com.byronhung.firstlight.ui.components.springClick
@@ -88,6 +89,7 @@ fun AlarmEditScreen(viewModel: AlarmEditViewModel, onScanForCode: () -> Unit, on
             onDifficulty = viewModel::setDifficulty,
             onSound = viewModel::setSound,
             onGentle = viewModel::setGentle,
+            onSkipNext = viewModel::setSkipNext,
             onLabel = viewModel::setLabel,
             onDelete = { viewModel.delete(onDone) },
             onTest = { viewModel.test(context) },
@@ -112,6 +114,7 @@ private fun AlarmEditContent(
     onDifficulty: (Int) -> Unit,
     onSound: (String?) -> Unit,
     onGentle: (Boolean) -> Unit,
+    onSkipNext: (Boolean) -> Unit,
     onLabel: (String) -> Unit,
     onDelete: () -> Unit,
     onTest: () -> Unit,
@@ -215,6 +218,7 @@ private fun AlarmEditContent(
 
             SoundRow(draft.soundUri, onSound)
             GentleRow(draft.gentleStart, onGentle)
+            if (draft.repeatDays != Weekdays.NONE) SkipNextRow(draft, onSkipNext)
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SectionLabel("Label", Modifier.padding(start = 4.dp))
@@ -375,6 +379,36 @@ private fun checksLine(n: Int): String = when (n) {
  * The alarm's sound. Opens Android's own picker: every built-in tone, plus files on the phone.
  * Picking "Default" stores null, so the alarm follows the phone's default alarm sound.
  */
+/**
+ * Skip next: for a holiday, skip just the coming ring; the alarm stays on and is back the day
+ * after. Shows which ring that is, from the time and days as currently set.
+ */
+@Composable
+private fun SkipNextRow(draft: EditDraft, onChange: (Boolean) -> Unit) {
+    val sky = LocalSky.current
+    val is24Hour = DateFormat.is24HourFormat(LocalContext.current)
+    val next = nextTrigger(draft.hour, draft.minute, draft.repeatDays, java.time.LocalDateTime.now())
+    val day = next.format(java.time.format.DateTimeFormatter.ofPattern("EEE d MMM", java.util.Locale.ENGLISH))
+    GlassCard(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                SectionLabel("Skip the next one")
+                Text("$day, ${formatTime(next.hour, next.minute, is24Hour)}", style = AppText.bodyStrong, color = sky.ink)
+                Text(
+                    if (draft.skipNext) "It stays on and rings again after that." else "For a holiday: skip just this one.",
+                    style = AppText.caption,
+                    color = sky.dim,
+                )
+            }
+            SpringToggle(draft.skipNext, onChange, label = "Skip the next one")
+        }
+    }
+}
+
 /** Gentle start: fade in over 30 seconds, or start at full volume. */
 @Composable
 private fun GentleRow(on: Boolean, onChange: (Boolean) -> Unit) {

@@ -40,6 +40,11 @@ data class Alarm(
     val soundUri: String? = null,
     /** Fade in over the first 30 s instead of starting at full volume. */
     @ColumnInfo(defaultValue = "1") val gentleStart: Boolean = true,
+    /**
+     * Skip next: the one ring to skip, as epoch millis; 0 = none. Once that time has passed it
+     * matches nothing, so it never needs clearing.
+     */
+    @ColumnInfo(defaultValue = "0") val skipAt: Long = 0,
 )
 
 enum class RoundType {

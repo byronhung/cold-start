@@ -32,10 +32,11 @@ abstract class FirstLightDatabase : RoomDatabase() {
                 .build()
         }
 
-        /** v10: gentle start per alarm, on for every existing alarm too. */
+        /** v10: gentle start per alarm (on for every existing alarm too), and skip next. */
         val MIGRATION_9_10 = object : Migration(9, 10) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `alarms` ADD COLUMN `gentleStart` INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE `alarms` ADD COLUMN `skipAt` INTEGER NOT NULL DEFAULT 0")
             }
         }
 
