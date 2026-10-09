@@ -117,7 +117,7 @@ fun ThankYouScreen(onPickSky: () -> Unit) {
             Text("Thank you.", style = AppText.display.copy(fontSize = 52.sp), color = Sun.OnGlass)
             Text(
                 "You just made First Light possible for a little longer. Your support pays for new puzzles " +
-                    "and new skies, and keeps waking up free for everyone.",
+                    "and new skies, and means the alarm can stay free for anyone who needs it.",
                 style = AppText.body.copy(fontSize = 17.sp, lineHeight = 25.sp),
                 color = Sun.OnGlass.copy(alpha = 0.9f),
             )
