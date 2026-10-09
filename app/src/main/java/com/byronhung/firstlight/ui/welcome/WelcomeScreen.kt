@@ -48,6 +48,8 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import com.byronhung.firstlight.ui.theme.SkyTheme
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -197,6 +199,33 @@ private fun ColumnScope.TryOne(next: () -> Unit) {
         }
         if (!solved && misses > 0) {
             Text("Read what it asks: the ink colour, or the word.", style = AppText.caption, color = LocalSky.current.dim)
+        }
+        // The one mention of Plus in the welcome: a line and a glimpse of the skies, no sell.
+        if (solved) PlusHint()
+    }
+}
+
+@Composable
+private fun PlusHint() {
+    val sky = LocalSky.current
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            "Plus adds three more puzzles and four skies. Try them any time in Settings.",
+            style = AppText.body,
+            color = sky.dim,
+        )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            SkyTheme.entries.filter { it.plus }.forEach { theme ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(
+                        Modifier
+                            .size(56.dp)
+                            .clip(AppShapes.small)
+                            .background(Brush.linearGradient(theme.swatch)),
+                    )
+                    Text(theme.label.substringBefore(' '), style = AppText.chip.copy(fontSize = 11.sp), color = sky.dim)
+                }
+            }
         }
     }
 }
