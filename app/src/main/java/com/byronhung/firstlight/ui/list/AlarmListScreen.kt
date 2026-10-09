@@ -1,6 +1,9 @@
 package com.byronhung.firstlight.ui.list
 
 import androidx.activity.compose.BackHandler
+import com.byronhung.firstlight.ui.plus.PlusNudgeCard
+import com.byronhung.firstlight.ui.components.PlusSheet
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -84,12 +87,25 @@ fun AlarmListScreen(
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val deleted by viewModel.deleted.collectAsStateWithLifecycle()
+    val nudge by viewModel.nudge.collectAsStateWithLifecycle()
+    var plusReason by remember { mutableStateOf<String?>(null) }
     AlarmListContent(
         ui, onAdd, onEdit, viewModel::setEnabled, onHistory, onSettings,
         deletedCount = deleted.size,
         onDelete = viewModel::delete,
         onUndo = viewModel::undoDelete,
         onUndoGone = viewModel::dismissUndo,
+        overlay = {
+            PlusNudgeCard(
+                visible = nudge,
+                onSeePlus = {
+                    viewModel.nudgeSeePlus()
+                    plusReason = "Three more puzzles and four new skies."
+                },
+                onNotNow = viewModel::nudgeNotNow,
+            )
+            PlusSheet(reason = plusReason, onDismiss = { plusReason = null })
+        },
     )
 }
 
@@ -105,6 +121,7 @@ private fun AlarmListContent(
     onDelete: (Set<Long>) -> Unit = {},
     onUndo: () -> Unit = {},
     onUndoGone: () -> Unit = {},
+    overlay: @Composable BoxScope.() -> Unit = {},
 ) {
     // Long-press a card to start picking; tap more to add them; delete them in one go.
     var picked by remember { mutableStateOf(emptySet<Long>()) }
@@ -215,6 +232,7 @@ private fun AlarmListContent(
                     .padding(end = 24.dp, bottom = 30.dp),
             )
         }
+        overlay()
     }
 }
 

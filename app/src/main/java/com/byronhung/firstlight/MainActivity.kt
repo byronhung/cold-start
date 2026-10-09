@@ -4,6 +4,11 @@ import android.os.Bundle
 import android.text.format.DateFormat
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import kotlinx.coroutines.flow.map
+import com.byronhung.firstlight.ui.plus.ThankYouScreen
 import com.byronhung.firstlight.ui.theme.SkyTheme
 import com.byronhung.firstlight.ui.plus.SkyPreviewScreen
 import com.byronhung.firstlight.ui.welcome.WelcomeScreen
@@ -55,6 +60,15 @@ class MainActivity : ComponentActivity() {
             val skyTheme by (application as FirstLightApp).skyTheme.collectAsState()
             FirstLightTheme(skyTheme) {
                 val nav = rememberNavController()
+                // Plus switching on while the app is open (the debug switch now, Play Billing later)
+                // ends on the thank-you screen. The first value is just the app starting up.
+                val isPlus by remember { repository.settings.map { it?.isPlus == true } }.collectAsState(initial = null)
+                var hadPlus by remember { mutableStateOf<Boolean?>(null) }
+                LaunchedEffect(isPlus) {
+                    val now = isPlus ?: return@LaunchedEffect
+                    if (hadPlus == false && now) nav.navigate("thanks")
+                    hadPlus = now
+                }
                 NavHost(
                     navController = nav,
                     startDestination = "list",
@@ -104,6 +118,11 @@ class MainActivity : ComponentActivity() {
                             onPreviewSky = { nav.navigate("sky/${it.code}") },
                             onBack = { nav.popBackStack() },
                         )
+                    }
+                    composable("thanks") {
+                        ThankYouScreen(onPickSky = {
+                            nav.navigate("settings") { popUpTo("list") }
+                        })
                     }
                     composable(
                         route = "sky/{code}",

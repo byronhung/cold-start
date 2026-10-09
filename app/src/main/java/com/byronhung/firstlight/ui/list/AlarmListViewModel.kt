@@ -8,6 +8,10 @@ import com.byronhung.firstlight.alarm.nextAlarm
 import com.byronhung.firstlight.alarm.period
 import com.byronhung.firstlight.data.Alarm
 import com.byronhung.firstlight.data.AlarmRepository
+import java.time.ZoneId
+import kotlinx.coroutines.flow.first
+import com.byronhung.firstlight.ui.plus.PlusNudge
+import com.byronhung.firstlight.ui.history.dayMarks
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.delay
@@ -81,6 +85,33 @@ class AlarmListViewModel(
 
     fun setEnabled(id: Long, enabled: Boolean) {
         viewModelScope.launch { repository.setEnabled(id, enabled) }
+    }
+
+    private val _nudge = MutableStateFlow(false)
+
+    /** The Plus popup is up. Decided once per visit to the list, so it can't flicker away mid-read. */
+    val nudge: StateFlow<Boolean> = _nudge.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            val settings = repository.currentSettings()
+            val wakes = repository.recentWakes.first()
+            val marks = dayMarks(wakes, ZoneId.systemDefault())
+            val now = System.currentTimeMillis()
+            if (PlusNudge.shouldShow(settings.isPlus, settings.welcomeDone, settings.plusNudgeAt, settings.plusNudgeDismissals, marks, now)) {
+                repository.plusNudgeShown(now)
+                _nudge.value = true
+            }
+        }
+    }
+
+    fun nudgeNotNow() {
+        _nudge.value = false
+        viewModelScope.launch { repository.plusNudgeDismissed() }
+    }
+
+    fun nudgeSeePlus() {
+        _nudge.value = false
     }
 
     private val _deleted = MutableStateFlow<List<Alarm>>(emptyList())

@@ -59,6 +59,12 @@ class AlarmRepository(
 
     suspend fun setWelcomeDone() = editSettings { it.copy(welcomeDone = true) }
 
+    /** The Plus popup just showed: start its 10-day wait. */
+    suspend fun plusNudgeShown(at: Long = System.currentTimeMillis()) = editSettings { it.copy(plusNudgeAt = at) }
+
+    /** "Not now" on the Plus popup. */
+    suspend fun plusNudgeDismissed() = editSettings { it.copy(plusNudgeDismissals = it.plusNudgeDismissals + 1) }
+
     /** The settings as they are now, read once. */
     suspend fun currentSettings(): AppSettings = wakeDao.settings() ?: AppSettings()
 
