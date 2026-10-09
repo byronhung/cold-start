@@ -7,6 +7,7 @@ import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.media.ToneGenerator
 import android.net.Uri
+import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.Log
@@ -27,6 +28,10 @@ import kotlin.math.ceil
  *
  * [setQuiet] silences the sound and vibration while the puzzle is being solved (see
  * [QuietWhileSolving]). The volume lock keeps running underneath, so it comes back at full volume.
+ *
+ * Gentle start: the player's own volume rises from 10% to 100% over [GENTLE_MS] while the stream
+ * stays locked, so the fade can't be undone by a volume key. Coming back from quiet returns to
+ * wherever the fade has reached. The generated fallback tone has no volume control and stays loud.
  */
 class Ringer(private val context: Context) {
     private val audio = context.getSystemService(AudioManager::class.java)
@@ -43,14 +48,22 @@ class Ringer(private val context: Context) {
     private var scope: CoroutineScope? = null
     private var quiet = false
     private var fade: Job? = null
+    private var startedAt = 0L
+    private var gentle = false
+
+    /** The loud volume right now: the fade-in's level, or full. */
+    private fun loudLevel(): Float = if (!gentle) 1f else gentleLevel(SystemClock.elapsedRealtime() - startedAt)
 
     /** [soundUri]: the alarm's own sound, or null for the phone's default alarm sound. */
-    fun start(scope: CoroutineScope, soundUri: String? = null) {
+    fun start(scope: CoroutineScope, soundUri: String? = null, gentle: Boolean = false) {
         this.scope = scope
+        this.gentle = gentle
+        startedAt = SystemClock.elapsedRealtime()
         originalVolume = audio.getStreamVolume(AudioManager.STREAM_ALARM)
         holdVolume()
         player = createPlayer(soundUri)
         if (player != null) {
+            loudLevel().let { v -> runCatching { player?.setVolume(v, v) } }
             player?.start()
         } else {
             // No ringtone readable (e.g. right after a reboot, before first unlock): a generated tone.
@@ -65,6 +78,14 @@ class Ringer(private val context: Context) {
                 holdVolume()
             }
         }
+        if (gentle) scope.launch {
+            // Step the fade-in four times a second until it reaches full.
+            while (isActive && loudLevel() < 1f) {
+                if (!quiet) loudLevel().let { v -> runCatching { player?.setVolume(v, v) } }
+                delay(250)
+            }
+            if (!quiet) runCatching { player?.setVolume(1f, 1f) }
+        }
     }
 
     /** Quiet fades out over [FADE_MS]; loud comes back at full volume at once. */
@@ -77,15 +98,16 @@ class Ringer(private val context: Context) {
         if (quiet) {
             vibrator?.cancel()
             tone?.stopTone()
+            val from = loudLevel()
             if (p != null) fade = scope?.launch {
                 for (i in FADE_STEPS - 1 downTo 0) {
-                    val v = i.toFloat() / FADE_STEPS
+                    val v = from * i.toFloat() / FADE_STEPS
                     runCatching { p.setVolume(v, v) }
                     delay(FADE_MS / FADE_STEPS)
                 }
             }
         } else {
-            runCatching { p?.setVolume(1f, 1f) }
+            loudLevel().let { v -> runCatching { p?.setVolume(v, v) } }
             vibrate()
         }
     }
@@ -147,9 +169,18 @@ class Ringer(private val context: Context) {
     }
 
     private companion object {
+
         const val TAG = "Ringer"
         const val VOLUME_FLOOR = 0.8
         const val FADE_MS = 300L
         const val FADE_STEPS = 6
     }
 }
+
+/** Gentle start: 10% to full over 30 s. */
+const val GENTLE_MS = 30_000L
+const val GENTLE_FROM = 0.1f
+
+/** The player volume [elapsedMs] into a gentle start: a straight rise from [GENTLE_FROM] to 1. */
+fun gentleLevel(elapsedMs: Long): Float =
+    (GENTLE_FROM + (1f - GENTLE_FROM) * elapsedMs.coerceAtLeast(0) / GENTLE_MS).coerceAtMost(1f)

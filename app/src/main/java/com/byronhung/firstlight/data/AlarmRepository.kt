@@ -139,7 +139,7 @@ class AlarmRepository(
         // A ring takes over from any waiting wake check: this morning's solve sets a fresh one.
         cancelPendingCheck()
 
-        val planned = plan(alarm)
+        val planned = plan(alarm).copy(gentleStart = alarm.gentleStart && !isRering)
         val wakeId = wakeDao.insertWake(
             WakeLog(alarmId = alarmId, firedAt = System.currentTimeMillis(), opener = planned.rounds.first()),
         )
@@ -152,7 +152,7 @@ class AlarmRepository(
      */
     suspend fun testSession(alarm: Alarm): RingSession = mutex.withLock {
         val planned = plan(alarm)
-        planned.copy(isTest = true, wakeChecks = 0, label = if (alarm.label.isBlank()) "Test" else "Test · ${alarm.label}")
+        planned.copy(isTest = true, wakeChecks = 0, gentleStart = alarm.gentleStart, label = if (alarm.label.isBlank()) "Test" else "Test · ${alarm.label}")
     }
 
     /** Plans a morning for [alarm]: puzzles, levels, the scan. No side effects; wakeId is unset. */

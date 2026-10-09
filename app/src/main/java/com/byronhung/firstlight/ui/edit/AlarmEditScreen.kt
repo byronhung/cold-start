@@ -87,6 +87,7 @@ fun AlarmEditScreen(viewModel: AlarmEditViewModel, onScanForCode: () -> Unit, on
             onChecks = viewModel::setWakeChecks,
             onDifficulty = viewModel::setDifficulty,
             onSound = viewModel::setSound,
+            onGentle = viewModel::setGentle,
             onLabel = viewModel::setLabel,
             onDelete = { viewModel.delete(onDone) },
             onTest = { viewModel.test(context) },
@@ -110,6 +111,7 @@ private fun AlarmEditContent(
     onChecks: (Int) -> Unit,
     onDifficulty: (Int) -> Unit,
     onSound: (String?) -> Unit,
+    onGentle: (Boolean) -> Unit,
     onLabel: (String) -> Unit,
     onDelete: () -> Unit,
     onTest: () -> Unit,
@@ -212,6 +214,7 @@ private fun AlarmEditContent(
             }
 
             SoundRow(draft.soundUri, onSound)
+            GentleRow(draft.gentleStart, onGentle)
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SectionLabel("Label", Modifier.padding(start = 4.dp))
@@ -372,6 +375,29 @@ private fun checksLine(n: Int): String = when (n) {
  * The alarm's sound. Opens Android's own picker: every built-in tone, plus files on the phone.
  * Picking "Default" stores null, so the alarm follows the phone's default alarm sound.
  */
+/** Gentle start: fade in over 30 seconds, or start at full volume. */
+@Composable
+private fun GentleRow(on: Boolean, onChange: (Boolean) -> Unit) {
+    val sky = LocalSky.current
+    GlassCard(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                SectionLabel("Gentle start")
+                Text(
+                    if (on) "Fades in over the first 30 seconds" else "Starts at full volume",
+                    style = AppText.bodyStrong,
+                    color = sky.ink,
+                )
+            }
+            SpringToggle(on, onChange, label = "Gentle start")
+        }
+    }
+}
+
 @Composable
 private fun SoundRow(soundUri: String?, onSound: (String?) -> Unit) {
     val sky = LocalSky.current

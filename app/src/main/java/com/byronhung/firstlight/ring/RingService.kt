@@ -66,7 +66,7 @@ class RingService : Service() {
             }
             controller.begin(session)
             goForeground(Notifications.ringing(this@RingService, session))
-            ringer = Ringer(this@RingService).also { it.start(scope, session.soundUri) }
+            ringer = Ringer(this@RingService).also { it.start(scope, session.soundUri, gentle = session.gentleStart) }
             // Quiet while you solve: checked often enough that a tap silences it within a blink.
             launch {
                 while (isActive) {

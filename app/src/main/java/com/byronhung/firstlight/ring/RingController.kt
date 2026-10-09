@@ -30,6 +30,8 @@ data class RingSession(
     val soundUri: String? = null,
     /** "Test this alarm" from the editor: rings for real, but nothing is logged or scheduled. */
     val isTest: Boolean = false,
+    /** Fade in over the first 30 s. Off for a re-ring after a missed wake check: you fell back asleep. */
+    val gentleStart: Boolean = false,
 )
 
 /** A solved round, before it's written to the database. */

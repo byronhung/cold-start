@@ -39,6 +39,7 @@ data class EditDraft(
     /** Null = the phone's default alarm sound. */
     val soundUri: String?,
     val isNew: Boolean,
+    val gentleStart: Boolean = true,
 )
 
 /** [alarmId] null = adding a new alarm. */
@@ -66,7 +67,7 @@ class AlarmEditViewModel(
                 val alarm = repository.get(alarmId)
                 original = alarm
                 draft = alarm?.let {
-                    EditDraft(it.hour, it.minute, it.repeatDays, it.label, it.wakeChecks, it.wakeMethod, it.difficulty, it.soundUri, isNew = false)
+                    EditDraft(it.hour, it.minute, it.repeatDays, it.label, it.wakeChecks, it.wakeMethod, it.difficulty, it.soundUri, isNew = false, gentleStart = it.gentleStart)
                 } ?: newDraft()
             }
         }
@@ -98,6 +99,10 @@ class AlarmEditViewModel(
 
     fun setSound(uri: String?) {
         draft = draft?.copy(soundUri = uri)
+    }
+
+    fun setGentle(on: Boolean) {
+        draft = draft?.copy(gentleStart = on)
     }
 
     /** [code]: a [Preset.code], or [FOLLOW_DEFAULT]. */
@@ -139,6 +144,7 @@ class AlarmEditViewModel(
         wakeMethod = d.wakeMethod,
         difficulty = d.difficulty,
         soundUri = d.soundUri,
+        gentleStart = d.gentleStart,
         enabled = true,
     )
 

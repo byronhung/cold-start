@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Alarm::class, WakeLog::class, RoundResult::class, AppSettings::class], version = 9, exportSchema = false)
+@Database(entities = [Alarm::class, WakeLog::class, RoundResult::class, AppSettings::class], version = 10, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class FirstLightDatabase : RoomDatabase() {
     abstract fun alarmDao(): AlarmDao
@@ -28,8 +28,15 @@ abstract class FirstLightDatabase : RoomDatabase() {
             // fails harmlessly if the phone is still locked.
             runCatching { deviceContext.moveDatabaseFrom(context, NAME) }
             return Room.databaseBuilder(deviceContext, FirstLightDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                 .build()
+        }
+
+        /** v10: gentle start per alarm, on for every existing alarm too. */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `alarms` ADD COLUMN `gentleStart` INTEGER NOT NULL DEFAULT 1")
+            }
         }
 
         /** v9: the first-run welcome, and the Plus popup's timing. */

@@ -38,6 +38,8 @@ data class Alarm(
     @ColumnInfo(defaultValue = "0") val wakeMethod: Int = 0,
     /** The sound picked for this alarm (a content URI). Null = the phone's default alarm sound. */
     val soundUri: String? = null,
+    /** Fade in over the first 30 s instead of starting at full volume. */
+    @ColumnInfo(defaultValue = "1") val gentleStart: Boolean = true,
 )
 
 enum class RoundType {
