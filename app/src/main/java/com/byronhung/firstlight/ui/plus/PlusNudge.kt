@@ -13,6 +13,9 @@ object PlusNudge {
     const val MAX_DISMISSALS = 3
     const val GOOD_MORNINGS = 3
 
+    /** Debug builds only: show the popup on the next visit to the alarm list, rules aside. */
+    @Volatile var forceNextForDebug = false
+
     fun shouldShow(
         isPlus: Boolean,
         welcomeDone: Boolean,

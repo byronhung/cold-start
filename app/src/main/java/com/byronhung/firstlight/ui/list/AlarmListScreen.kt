@@ -88,6 +88,7 @@ fun AlarmListScreen(
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val deleted by viewModel.deleted.collectAsStateWithLifecycle()
     val nudge by viewModel.nudge.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { viewModel.checkNudge() }
     var plusReason by remember { mutableStateOf<String?>(null) }
     AlarmListContent(
         ui, onAdd, onEdit, viewModel::setEnabled, onHistory, onSettings,

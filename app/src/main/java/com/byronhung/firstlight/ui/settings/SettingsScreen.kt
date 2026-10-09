@@ -26,6 +26,7 @@ import com.byronhung.firstlight.puzzle.Preset
 import com.byronhung.firstlight.puzzle.effectiveMix
 import com.byronhung.firstlight.puzzle.parseMix
 import com.byronhung.firstlight.ui.components.PlusSheet
+import com.byronhung.firstlight.ui.plus.PlusNudge
 import com.byronhung.firstlight.ui.plus.PuzzlePreviewSheet
 import com.byronhung.firstlight.ui.components.Segmented
 import com.byronhung.firstlight.ui.components.SpringToggle
@@ -302,6 +303,10 @@ fun SettingsScreen(
                         SpringToggle(ui?.isPlus == true, { viewModel.setPlus(it) }, "Debug Plus")
                     }
                 }
+                QuietButton("Debug: show the Plus popup", {
+                    PlusNudge.forceNextForDebug = true
+                    onBack()
+                }, Modifier.fillMaxWidth())
             }
         }
 

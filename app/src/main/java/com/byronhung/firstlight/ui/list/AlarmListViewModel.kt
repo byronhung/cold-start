@@ -92,13 +92,16 @@ class AlarmListViewModel(
     /** The Plus popup is up. Decided once per visit to the list, so it can't flicker away mid-read. */
     val nudge: StateFlow<Boolean> = _nudge.asStateFlow()
 
-    init {
+    /** Called each time the list is shown: decides, once per visit, whether the popup comes up. */
+    fun checkNudge() {
+        if (_nudge.value) return
         viewModelScope.launch {
             val settings = repository.currentSettings()
             val wakes = repository.recentWakes.first()
             val marks = dayMarks(wakes, ZoneId.systemDefault())
             val now = System.currentTimeMillis()
-            if (PlusNudge.shouldShow(settings.isPlus, settings.welcomeDone, settings.plusNudgeAt, settings.plusNudgeDismissals, marks, now)) {
+            val forced = PlusNudge.forceNextForDebug.also { PlusNudge.forceNextForDebug = false }
+            if (forced || PlusNudge.shouldShow(settings.isPlus, settings.welcomeDone, settings.plusNudgeAt, settings.plusNudgeDismissals, marks, now)) {
                 repository.plusNudgeShown(now)
                 _nudge.value = true
             }
