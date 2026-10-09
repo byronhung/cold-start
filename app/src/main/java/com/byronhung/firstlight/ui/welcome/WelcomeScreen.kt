@@ -2,6 +2,10 @@ package com.byronhung.firstlight.ui.welcome
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import com.byronhung.firstlight.ui.theme.Motion
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -73,13 +77,13 @@ import com.byronhung.firstlight.ui.theme.LocalSkyTheme
 import com.byronhung.firstlight.ui.theme.Sun
 import kotlinx.coroutines.delay
 
-private const val STEPS = 6
-private const val PERMISSIONS_STEP = 5
+private const val STEPS = 7
+private const val PERMISSIONS_STEP = 6
 
 /**
  * The first-run welcome, from the approved mockup (claude.ai/artifact/3BdabayPCjA5BD57hGj6LC):
- * what the app is, a real puzzle to play, tap-to-quiet, registering a code, where your mornings
- * are kept, and the permissions alarms need. Skip jumps to the permissions, since those are the one step that really matters.
+ * what the app is, a real puzzle to play, tap-to-quiet, a wake check, registering a code, where
+ * your mornings are kept, and the permissions alarms need. Skip jumps to the permissions, since those are the one step that really matters.
  * Settings › "How First Light works" replays it ([replay]: no "set my first alarm" at the end).
  *
  * [wakeCode] is the registered code, if any; [onScan] opens the real scanner, which saves the code
@@ -110,7 +114,13 @@ fun WelcomeScreen(wakeCode: String?, replay: Boolean, onScan: () -> Unit, onDone
             }
             AnimatedContent(
                 targetState = step,
-                transitionSpec = { (slideInHorizontally(tween(320)) { it / 8 } + fadeIn(tween(320))).togetherWith(fadeOut(tween(160))) },
+                // A page turn: forward slides in from the right and out to the left, Back the reverse.
+                // The old page moves too, so a step whose layout changes a lot doesn't read as a snap.
+                transitionSpec = {
+                    val dir = if (targetState > initialState) 1 else -1
+                    (slideInHorizontally(tween(420, easing = Motion.softOut)) { dir * it / 3 } + fadeIn(tween(320, delayMillis = 60)))
+                        .togetherWith(slideOutHorizontally(tween(420, easing = Motion.softOut)) { -dir * it / 3 } + fadeOut(tween(220)))
+                },
                 modifier = Modifier.weight(1f),
                 label = "welcome",
             ) { s ->
@@ -119,8 +129,9 @@ fun WelcomeScreen(wakeCode: String?, replay: Boolean, onScan: () -> Unit, onDone
                         0 -> Hello(next = { step = 1 })
                         1 -> TryOne(next = { step = 2 })
                         2 -> Quiet(next = { step = 3 })
-                        3 -> Scan(wakeCode, onScan, next = { step = 4 })
-                        4 -> YourMonth(next = { step = 5 })
+                        3 -> WakeCheckDemo(next = { step = 4 })
+                        4 -> Scan(wakeCode, onScan, next = { step = 5 })
+                        5 -> YourMonth(next = { step = 6 })
                         else -> Permissions(replay, onDone)
                     }
                 }
@@ -194,14 +205,16 @@ private fun ColumnScope.TryOne(next: () -> Unit) {
         buttons = { AmberButton(if (solved) "Next" else "Skip the puzzle", next, Modifier.fillMaxWidth(), height = 56.dp) },
     ) {
         PuzzleGlass {
-            if (!solved) StroopPuzzle(Levels.MIN, onMiss = { misses++ }, onSolved = { solved = true })
-            else Text("Nice. That's one round.", style = AppText.bodyStrong, color = Sun.Glow, textAlign = TextAlign.Center)
+            AnimatedContent(solved, transitionSpec = { fadeIn(tween(300)).togetherWith(fadeOut(tween(200))) }, label = "solved") { done ->
+                if (!done) StroopPuzzle(Levels.MIN, onMiss = { misses++ }, onSolved = { solved = true })
+                else Text("Nice. That's one round.", style = AppText.bodyStrong, color = Sun.Glow, textAlign = TextAlign.Center)
+            }
         }
         if (!solved && misses > 0) {
             Text("Read what it asks: the ink colour, or the word.", style = AppText.caption, color = LocalSky.current.dim)
         }
         // The one mention of Plus in the welcome: a line and a glimpse of the skies, no sell.
-        if (solved) PlusHint()
+        AnimatedVisibility(solved, enter = fadeIn(tween(400, delayMillis = 250)) + expandVertically(tween(400, delayMillis = 150))) { PlusHint() }
     }
 }
 
@@ -291,6 +304,75 @@ private fun SoundBars(ringing: Boolean) {
         }
     }
 }
+
+/**
+ * A wake check, tried once: the "Still awake?" ring that comes a few minutes after you solve an
+ * alarm. The real one gives a minute; the demo gives 15 seconds so nobody waits around.
+ */
+@Composable
+private fun ColumnScope.WakeCheckDemo(next: () -> Unit) {
+    var started by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var now by remember { mutableLongStateOf(started) }
+    var passed by remember { mutableStateOf(false) }
+    LaunchedEffect(started, passed) {
+        while (!passed) {
+            delay(100)
+            now = System.currentTimeMillis()
+        }
+    }
+    val left = (DEMO_CHECK_MS - (now - started)).coerceAtLeast(0)
+    val missed = !passed && left == 0L
+    Step(
+        label = "Wake checks",
+        title = "Five minutes later: still awake?",
+        body = "After you solve an alarm, it checks in. Tap I'm up within a minute, or it rings again " +
+            "from round 1. If you're already using your phone, it passes on its own. Set 0 to 3 per alarm.",
+        buttons = { AmberButton("Next", next, Modifier.fillMaxWidth(), height = 56.dp) },
+    ) {
+        PuzzleGlass {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                when {
+                    passed -> Text("That's a wake check passed.", style = AppText.bodyStrong, color = Sun.Glow, textAlign = TextAlign.Center)
+                    missed -> {
+                        Text("Missed it. A real one would ring again now.", style = AppText.bodyStrong, color = Sun.Rose, textAlign = TextAlign.Center)
+                        QuietButton("Try again", {
+                            started = System.currentTimeMillis()
+                            now = started
+                        })
+                    }
+                    else -> {
+                        Text("Still awake?", style = AppText.title, color = Sun.OnGlass)
+                        Box(contentAlignment = Alignment.Center) {
+                            Canvas(Modifier.size(150.dp)) {
+                                val stroke = 6.dp.toPx()
+                                val inset = stroke / 2
+                                val arc = Size(size.width - stroke, size.height - stroke)
+                                drawArc(Sun.OnGlass.copy(alpha = 0.15f), 0f, 360f, false, Offset(inset, inset), arc, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
+                                drawArc(Sun.ToggleLight, -90f, 360f * left / DEMO_CHECK_MS, false, Offset(inset, inset), arc, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = StrokeCap.Round))
+                            }
+                            Box(
+                                Modifier
+                                    .size(112.dp)
+                                    .clip(CircleShape)
+                                    .background(Sun.amberBrush)
+                                    .springClick(0.9f) { passed = true }
+                                    .semantics { contentDescription = "I'm up" },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("I'm up", style = AppText.button, color = Sun.OnAmber)
+                                    Text("${(left + 999) / 1000} s", style = AppText.caption, color = Sun.OnAmber.copy(alpha = 0.7f))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private const val DEMO_CHECK_MS = 15_000L
 
 /** Registering the wake-up code: the real scanner, or later. */
 @Composable
