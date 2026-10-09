@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.LocalTime
 
 /** Everything the form holds, the time included: the wheel picker reports as it turns. */
 data class EditDraft(
@@ -66,8 +67,9 @@ class AlarmEditViewModel(
     }
 
     // New alarms get one wake check: enough to catch going back to sleep, rarely noticed when awake.
+    /** A new alarm opens on the time it is now, so the wheels start close to wherever you're setting it. */
     private fun newDraft() = EditDraft(
-        hour = 7, minute = 0, repeatDays = Weekdays.WEEKDAYS, label = "",
+        hour = LocalTime.now().hour, minute = LocalTime.now().minute, repeatDays = Weekdays.WEEKDAYS, label = "",
         wakeChecks = 1, wakeMethod = WakeMethod.PUZZLES.code, difficulty = FOLLOW_DEFAULT, soundUri = null, isNew = true,
     )
 
