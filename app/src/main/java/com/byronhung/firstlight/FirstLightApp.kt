@@ -7,6 +7,7 @@ import com.byronhung.firstlight.data.AlarmRepository
 import com.byronhung.firstlight.data.FirstLightDatabase
 import com.byronhung.firstlight.ring.Notifications
 import com.byronhung.firstlight.ring.RingController
+import com.byronhung.firstlight.ring.Ringer
 import com.byronhung.firstlight.ui.theme.SkyTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -42,6 +43,7 @@ class FirstLightApp : Application() {
     override fun onCreate() {
         super.onCreate()
         Notifications.ensureChannel(this)
+        Ringer.restoreAfterCrash(this)
         skyTheme.value // Starts reading it now, before any alarm can ring.
         // Covers the cases no broadcast announces, like a force-stop wiping every scheduled alarm.
         appScope.launch { repository.rescheduleAll() }

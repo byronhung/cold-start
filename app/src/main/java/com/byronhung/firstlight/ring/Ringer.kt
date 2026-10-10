@@ -29,6 +29,12 @@ import kotlin.math.ceil
  * [setQuiet] silences the sound and vibration while the puzzle is being solved (see
  * [QuietWhileSolving]). The volume lock keeps running underneath, so it comes back at full volume.
  *
+ * On a call (or with a call ringing in): no volume lock and only a soft ring, so the alarm isn't
+ * blasted into someone's ear. The moment the call ends it's back to full, lock and all.
+ *
+ * The original volume is kept on disk (device-protected, readable before first unlock) for as long
+ * as it rings, so if Android kills the app mid-ring, [restoreAfterCrash] puts it back next start.
+ *
  * Gentle start: the player's own volume rises from 10% to 100% over [GENTLE_MS] while the stream
  * stays locked, so the fade can't be undone by a volume key. Coming back from quiet returns to
  * wherever the fade has reached. The generated fallback tone has no volume control and stays loud.
@@ -51,19 +57,34 @@ class Ringer(private val context: Context) {
     private var startedAt = 0L
     private var gentle = false
 
+    private var wasInCall = false
+
     /** The loud volume right now: the fade-in's level, or full. */
     private fun loudLevel(): Float = if (!gentle) 1f else gentleLevel(SystemClock.elapsedRealtime() - startedAt)
+
+    /** On a call, in a voice/video chat, or with a call ringing in. */
+    private fun inCall(): Boolean = audio.mode.let {
+        it == AudioManager.MODE_IN_CALL || it == AudioManager.MODE_IN_COMMUNICATION || it == AudioManager.MODE_RINGTONE
+    }
+
+    /** What the player plays at when it isn't quieted: the loud level, held down during a call. */
+    private fun level(): Float = if (inCall()) minOf(loudLevel(), IN_CALL_LEVEL) else loudLevel()
+
+    private val prefs get() = context.createDeviceProtectedStorageContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     /** [soundUri]: the alarm's own sound, or null for the phone's default alarm sound. */
     fun start(scope: CoroutineScope, soundUri: String? = null, gentle: Boolean = false) {
         this.scope = scope
         this.gentle = gentle
         startedAt = SystemClock.elapsedRealtime()
-        originalVolume = audio.getStreamVolume(AudioManager.STREAM_ALARM)
+        // A volume left over from a ring that never finished is the real original.
+        originalVolume = prefs.getInt(KEY_ORIGINAL, -1).takeIf { it >= 0 } ?: audio.getStreamVolume(AudioManager.STREAM_ALARM)
+        prefs.edit().putInt(KEY_ORIGINAL, originalVolume).commit()
+        wasInCall = inCall()
         holdVolume()
         player = createPlayer(soundUri)
         if (player != null) {
-            loudLevel().let { v -> runCatching { player?.setVolume(v, v) } }
+            level().let { v -> runCatching { player?.setVolume(v, v) } }
             player?.start()
         } else {
             // No ringtone readable (e.g. right after a reboot, before first unlock): a generated tone.
@@ -73,18 +94,25 @@ class Ringer(private val context: Context) {
 
         guard = scope.launch {
             while (isActive) {
-                if (!quiet) tone?.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 800)
+                // The fallback tone has no volume of its own, so it simply waits out a call.
+                if (!quiet && !inCall()) tone?.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 800)
                 delay(1_000)
+                val call = inCall()
+                if (call != wasInCall) {
+                    wasInCall = call
+                    Log.d(TAG, if (call) "call: ringing softly" else "call ended: full volume")
+                    if (!quiet) level().let { v -> runCatching { player?.setVolume(v, v) } }
+                }
                 holdVolume()
             }
         }
         if (gentle) scope.launch {
             // Step the fade-in four times a second until it reaches full.
             while (isActive && loudLevel() < 1f) {
-                if (!quiet) loudLevel().let { v -> runCatching { player?.setVolume(v, v) } }
+                if (!quiet) level().let { v -> runCatching { player?.setVolume(v, v) } }
                 delay(250)
             }
-            if (!quiet) runCatching { player?.setVolume(1f, 1f) }
+            if (!quiet) level().let { v -> runCatching { player?.setVolume(v, v) } }
         }
     }
 
@@ -98,7 +126,7 @@ class Ringer(private val context: Context) {
         if (quiet) {
             vibrator?.cancel()
             tone?.stopTone()
-            val from = loudLevel()
+            val from = level()
             if (p != null) fade = scope?.launch {
                 for (i in FADE_STEPS - 1 downTo 0) {
                     val v = from * i.toFloat() / FADE_STEPS
@@ -107,7 +135,7 @@ class Ringer(private val context: Context) {
                 }
             }
         } else {
-            loudLevel().let { v -> runCatching { p?.setVolume(v, v) } }
+            level().let { v -> runCatching { p?.setVolume(v, v) } }
             vibrate()
         }
     }
@@ -131,9 +159,11 @@ class Ringer(private val context: Context) {
         if (originalVolume >= 0) {
             runCatching { audio.setStreamVolume(AudioManager.STREAM_ALARM, originalVolume, 0) }
         }
+        prefs.edit().remove(KEY_ORIGINAL).commit()
     }
 
     private fun holdVolume() {
+        if (inCall()) return
         val max = audio.getStreamMaxVolume(AudioManager.STREAM_ALARM)
         val floor = ceil(max * VOLUME_FLOOR).toInt()
         if (audio.getStreamVolume(AudioManager.STREAM_ALARM) < floor) {
@@ -168,12 +198,29 @@ class Ringer(private val context: Context) {
         return null
     }
 
-    private companion object {
+    companion object {
+        /** How loud the player is during a call: present, not painful. */
+        private const val IN_CALL_LEVEL = 0.15f
+        private const val PREFS = "ringer"
+        private const val KEY_ORIGINAL = "originalAlarmVolume"
 
-        const val TAG = "Ringer"
-        const val VOLUME_FLOOR = 0.8
-        const val FADE_MS = 300L
-        const val FADE_STEPS = 6
+        /**
+         * The app was killed mid-ring last time, so the alarm volume is still held up: put it back.
+         * Called on every app start, before any ring can begin.
+         */
+        fun restoreAfterCrash(context: Context) {
+            val prefs = context.createDeviceProtectedStorageContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val original = prefs.getInt(KEY_ORIGINAL, -1)
+            if (original < 0) return
+            runCatching { context.getSystemService(AudioManager::class.java).setStreamVolume(AudioManager.STREAM_ALARM, original, 0) }
+            prefs.edit().remove(KEY_ORIGINAL).commit()
+        }
+
+
+        private const val TAG = "Ringer"
+        private const val VOLUME_FLOOR = 0.8
+        private const val FADE_MS = 300L
+        private const val FADE_STEPS = 6
     }
 }
 
