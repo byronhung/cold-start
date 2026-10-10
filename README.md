@@ -26,13 +26,21 @@ No snooze.
 - **Your month at a glance.** History shows a calendar of mornings (up, rang again, gave up) and the
   time you were actually up each day.
 - **Tidy up fast.** Long-press an alarm to select several and delete them at once, with Undo.
+- **Gentle start.** Fades in over 30 seconds (per alarm). A re-ring after a missed wake check starts loud.
+- **Test this alarm.** Ring it from the editor, exactly as set, without logging anything.
+- **Skip next.** Skip just the coming ring of a repeating alarm, for a holiday.
+- **Kind on calls.** An alarm that goes off mid-call rings softly, then full once you hang up.
+- **Light or dark.** By the hour, always light, always dark, or match your phone. The sky still moves
+  through the day either way.
+- **Colour-blind friendly.** Puzzle colours are checked against the three main kinds of colour blindness.
+- **A short welcome** on first launch: try a puzzle, a wake check, register a code.
 
 *Coming with First Light Plus (one payment, not on sale yet): three more puzzles and four skies you can
 touch: Aurora, Monsoon, Neon city and Coast.*
 
 ## Install
 
-1. Download [`apk/FirstLight-0.5.apk`](apk/FirstLight-0.5.apk) on an Android phone (Android 10 or newer).
+1. Download [`apk/FirstLight-0.6.apk`](apk/FirstLight-0.6.apk) on an Android phone (Android 10 or newer).
 2. Open it. Android will ask you to allow installing from that app (Files, Chrome, WhatsApp…). Allow it.
    It will also warn that the app isn't from the Play Store; that's expected.
 3. Open First Light and tap **Allow** on everything in the *Before alarms can ring* card,
