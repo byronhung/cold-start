@@ -65,6 +65,7 @@ import com.byronhung.firstlight.ui.theme.AppShapes
 import com.byronhung.firstlight.ui.theme.AppText
 import com.byronhung.firstlight.ui.theme.LocalSky
 import com.byronhung.firstlight.ui.theme.LocalSkyTheme
+import com.byronhung.firstlight.ui.theme.skyAt
 import com.byronhung.firstlight.ui.theme.Space
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -74,7 +75,7 @@ fun AlarmEditScreen(viewModel: AlarmEditViewModel, onScanForCode: () -> Unit, on
     val wakeCode by viewModel.wakeCode.collectAsStateWithLifecycle()
     val defaultDifficulty by viewModel.defaultDifficulty.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    SkyBackground(LocalSkyTheme.current.forHour(LocalTime.now().hour), calm = true) {
+    SkyBackground(skyAt(LocalTime.now().hour), calm = true) {
         val draft = viewModel.draft ?: return@SkyBackground
         AlarmEditContent(
             draft = draft,

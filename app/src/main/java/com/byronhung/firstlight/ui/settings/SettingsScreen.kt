@@ -75,6 +75,8 @@ import com.byronhung.firstlight.ui.theme.LocalSky
 import com.byronhung.firstlight.ui.theme.LocalSkyTheme
 import com.byronhung.firstlight.ui.theme.Motion
 import com.byronhung.firstlight.ui.theme.SkyTheme
+import com.byronhung.firstlight.ui.theme.calmSky
+import com.byronhung.firstlight.ui.theme.Appearance
 import com.byronhung.firstlight.ui.theme.Space
 import com.byronhung.firstlight.ui.theme.Sun
 import kotlinx.coroutines.flow.SharingStarted
@@ -91,6 +93,7 @@ data class SettingsUi(
     val defaultDifficulty: Preset,
     val isPlus: Boolean,
     val theme: SkyTheme,
+    val appearance: Appearance = Appearance.BY_HOUR,
 )
 
 class SettingsViewModel(private val repository: AlarmRepository) : ViewModel() {
@@ -103,6 +106,7 @@ class SettingsViewModel(private val repository: AlarmRepository) : ViewModel() {
             defaultDifficulty = Preset.of(settings.defaultDifficulty),
             isPlus = settings.isPlus,
             theme = SkyTheme.effective(settings.theme, settings.isPlus),
+            appearance = Appearance.of(settings.appearance),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
@@ -121,6 +125,10 @@ class SettingsViewModel(private val repository: AlarmRepository) : ViewModel() {
 
     fun setDefaultDifficulty(preset: Preset) {
         viewModelScope.launch { repository.setDefaultDifficulty(preset) }
+    }
+
+    fun setAppearance(appearance: Appearance) {
+        viewModelScope.launch { repository.setAppearance(appearance) }
     }
 
     fun setTheme(theme: SkyTheme) {
@@ -145,7 +153,7 @@ fun SettingsScreen(
     // A locked Plus puzzle being tried.
     var trying by remember { mutableStateOf<CatalogPuzzle?>(null) }
     var mixNote by remember { mutableStateOf<String?>(null) }
-    SkyBackground(LocalSkyTheme.current.night, calm = true) {
+    SkyBackground(calmSky(), calm = true) {
         val sky = LocalSky.current
         Column(
             Modifier
@@ -235,6 +243,27 @@ fun SettingsScreen(
                                 )
                             }
                         }
+                    }
+                }
+
+                GlassCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        SectionLabel("Appearance")
+                        Segmented(
+                            listOf("By hour", "Light", "Dark", "Phone"),
+                            Appearance.entries.indexOf(current.appearance),
+                            onSelect = { viewModel.setAppearance(Appearance.entries[it]) },
+                        )
+                        Text(
+                            when (current.appearance) {
+                                Appearance.BY_HOUR -> "The sky follows the clock, night to day and back."
+                                Appearance.LIGHT -> "Always light. The sky still shifts through the day."
+                                Appearance.DARK -> "Always dark. The sky still shifts, from night to dawn to dusk."
+                                Appearance.PHONE -> "Light or dark, following your phone's dark mode."
+                            } + " The ringing screen is always dawn.",
+                            style = AppText.caption.copy(fontSize = 12.5.sp),
+                            color = sky.dim,
+                        )
                     }
                 }
             }

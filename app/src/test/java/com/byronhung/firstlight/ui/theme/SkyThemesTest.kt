@@ -48,4 +48,27 @@ class SkyThemesTest {
             assertEquals(Phase.NIGHT, t.forHour(23).phase)
         }
     }
+
+    // ---------- appearance ----------
+
+    @Test fun `dark never brightens, at any hour, in any theme`() {
+        for (t in SkyTheme.entries) for (h in 0..23) assertFalse("${t.label} $h", t.forHour(h, Appearance.DARK).isLight)
+    }
+
+    @Test fun `light never goes dark, at any hour, in any theme`() {
+        for (t in SkyTheme.entries) for (h in 0..23) assertTrue("${t.label} $h", t.forHour(h, Appearance.LIGHT).isLight)
+    }
+
+    @Test fun `dark and light still change through the day`() {
+        for (t in SkyTheme.entries) {
+            assertTrue((0..23).map { t.forHour(it, Appearance.DARK) }.toSet().size >= 4)
+            assertTrue((0..23).map { t.forHour(it, Appearance.LIGHT) }.toSet().size >= 3)
+        }
+    }
+
+    @Test fun `by the hour is the plain day cycle`() {
+        for (t in SkyTheme.entries) for (h in 0..23) assertEquals(t.forHour(h), t.forHour(h, Appearance.BY_HOUR))
+    }
+
+    @Test fun `unknown appearance codes are by the hour`() = assertEquals(Appearance.BY_HOUR, Appearance.of(9))
 }

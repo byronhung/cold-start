@@ -9,6 +9,7 @@ import com.byronhung.firstlight.ring.Notifications
 import com.byronhung.firstlight.ring.RingController
 import com.byronhung.firstlight.ring.Ringer
 import com.byronhung.firstlight.ui.theme.SkyTheme
+import com.byronhung.firstlight.ui.theme.Appearance
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -34,6 +35,12 @@ class FirstLightApp : Application() {
      * The chosen sky, kept warm for the whole process: the ringing screen opens on the right theme
      * instead of flashing Sunrise while the database answers.
      */
+    val appearance: StateFlow<Appearance> by lazy {
+        repository.settings
+            .map { Appearance.of(it?.appearance ?: 0) }
+            .stateIn(appScope, SharingStarted.Eagerly, Appearance.BY_HOUR)
+    }
+
     val skyTheme: StateFlow<SkyTheme> by lazy {
         repository.settings
             .map { SkyTheme.effective(it?.theme ?: 0, it?.isPlus == true) }
@@ -45,6 +52,7 @@ class FirstLightApp : Application() {
         Notifications.ensureChannel(this)
         Ringer.restoreAfterCrash(this)
         skyTheme.value // Starts reading it now, before any alarm can ring.
+        appearance.value
         // Covers the cases no broadcast announces, like a force-stop wiping every scheduled alarm.
         appScope.launch { repository.rescheduleAll() }
     }

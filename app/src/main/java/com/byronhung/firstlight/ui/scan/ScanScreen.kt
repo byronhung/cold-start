@@ -35,6 +35,7 @@ import com.byronhung.firstlight.ui.theme.AppShapes
 import com.byronhung.firstlight.ui.theme.AppText
 import com.byronhung.firstlight.ui.theme.LocalSky
 import com.byronhung.firstlight.ui.theme.LocalSkyTheme
+import com.byronhung.firstlight.ui.theme.calmSky
 import com.byronhung.firstlight.ui.theme.Space
 import com.google.android.gms.common.moduleinstall.ModuleInstall
 import com.google.android.gms.common.moduleinstall.ModuleInstallRequest
@@ -63,7 +64,7 @@ fun ScanScreen(onCode: (String) -> Unit, onBack: () -> Unit) {
     var torch by remember { mutableStateOf(false) }
     var done by remember { mutableStateOf(false) }
 
-    SkyBackground(LocalSkyTheme.current.night, calm = true) {
+    SkyBackground(calmSky(), calm = true) {
         val sky = LocalSky.current
         Column(
             Modifier

@@ -53,6 +53,7 @@ import com.byronhung.firstlight.ui.theme.AppShapes
 import com.byronhung.firstlight.ui.theme.AppText
 import com.byronhung.firstlight.ui.theme.LocalSky
 import com.byronhung.firstlight.ui.theme.LocalSkyTheme
+import com.byronhung.firstlight.ui.theme.calmSky
 import com.byronhung.firstlight.ui.theme.Space
 import com.byronhung.firstlight.ui.theme.Sun
 import kotlinx.coroutines.flow.SharingStarted
@@ -148,7 +149,7 @@ class HistoryViewModel(repository: AlarmRepository, private val is24Hour: Boolea
 fun HistoryScreen(viewModel: HistoryViewModel, onBack: () -> Unit) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val month by viewModel.month.collectAsStateWithLifecycle()
-    SkyBackground(LocalSkyTheme.current.night, calm = true) {
+    SkyBackground(calmSky(), calm = true) {
         val sky = LocalSky.current
         LazyColumn(
             modifier = Modifier.safeDrawingPadding(),

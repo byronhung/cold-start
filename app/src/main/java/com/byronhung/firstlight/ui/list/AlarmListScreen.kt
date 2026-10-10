@@ -73,6 +73,7 @@ import com.byronhung.firstlight.ui.theme.AppText
 import com.byronhung.firstlight.ui.theme.LocalSky
 import com.byronhung.firstlight.ui.theme.Motion
 import com.byronhung.firstlight.ui.theme.LocalSkyTheme
+import com.byronhung.firstlight.ui.theme.skyAt
 import com.byronhung.firstlight.ui.theme.Space
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -139,7 +140,7 @@ private fun AlarmListContent(
         }
     }
 
-    SkyBackground(LocalSkyTheme.current.forHour(ui?.hour ?: LocalTime.now().hour)) {
+    SkyBackground(skyAt(ui?.hour ?: LocalTime.now().hour)) {
         val sky = LocalSky.current
         LazyColumn(
             modifier = Modifier.safeDrawingPadding(),

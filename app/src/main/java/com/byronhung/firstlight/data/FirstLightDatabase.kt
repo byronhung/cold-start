@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Alarm::class, WakeLog::class, RoundResult::class, AppSettings::class], version = 10, exportSchema = false)
+@Database(entities = [Alarm::class, WakeLog::class, RoundResult::class, AppSettings::class], version = 11, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class FirstLightDatabase : RoomDatabase() {
     abstract fun alarmDao(): AlarmDao
@@ -28,8 +28,15 @@ abstract class FirstLightDatabase : RoomDatabase() {
             // fails harmlessly if the phone is still locked.
             runCatching { deviceContext.moveDatabaseFrom(context, NAME) }
             return Room.databaseBuilder(deviceContext, FirstLightDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
                 .build()
+        }
+
+        /** v11: Appearance (by the hour, light, dark, match phone). */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `settings` ADD COLUMN `appearance` INTEGER NOT NULL DEFAULT 0")
+            }
         }
 
         /** v10: gentle start per alarm (on for every existing alarm too), and skip next. */

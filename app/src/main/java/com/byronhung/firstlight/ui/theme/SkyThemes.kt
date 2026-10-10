@@ -1,7 +1,12 @@
 package com.byronhung.firstlight.ui.theme
 
 import androidx.compose.runtime.staticCompositionLocalOf
+import java.time.LocalTime
+import androidx.compose.runtime.Composable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.toArgb
 
 /** What moves on top of the gradient. Each theme has one; [SkyBackground] draws it. */
 enum class Scene { SUN, AURORA, MONSOON, NEON, COAST }
@@ -111,6 +116,23 @@ enum class SkyTheme(
         return hours[i].sky(PHASES[i], scene)
     }
 
+    /**
+     * The sky at [hour] in an appearance. By the hour is [forHour]. Dark still moves through the
+     * day but never brightens: each light stop is swapped for its nearest dark one (morning holds
+     * the dawn, afternoon the dusk). Light is the mirror: the day stops stay, and
+     * night, dawn and dusk become pale versions of themselves (lavender, peach, rose). Byron, 10 Oct: "dynamic throughout the day, excluding the day cycle
+     * in dark mode".
+     */
+    fun forHour(hour: Int, appearance: Appearance): Sky {
+        val h = hour.coerceIn(0, 23)
+        val i = HOURS.indexOfLast { it <= h }
+        return when (appearance) {
+            Appearance.DARK -> DARK_STOPS[i].let { j -> hours[j].sky(PHASES[j], scene) }
+            Appearance.LIGHT -> if (PHASES[i] == Phase.DAY) hours[i].sky(Phase.DAY, scene) else hours[i].pale().sky(Phase.DAY, scene)
+            else -> hours[i].sky(PHASES[i], scene)
+        }
+    }
+
     val dawn: Sky get() = dawnStop.sky(Phase.DAWN, scene)
     val morning: Sky get() = morningStop.sky(Phase.DAY, scene)
 
@@ -122,6 +144,10 @@ enum class SkyTheme(
 
     companion object {
         private val HOURS = listOf(0, 5, 6, 8, 11, 17, 19, 21)
+
+        /** Dark: 8 h holds the 6 h dawn, 11 h holds the 17 h dusk; the rest are already dark. */
+        private val DARK_STOPS = listOf(0, 1, 2, 2, 5, 5, 6, 7)
+
         private val PHASES = listOf(
             Phase.NIGHT, Phase.NIGHT, Phase.DAWN, Phase.DAY, Phase.DAY, Phase.DAWN, Phase.NIGHT, Phase.NIGHT,
         )
@@ -139,8 +165,54 @@ class Stop(top: Long, mid: Long, bottom: Long, private val sun: Float = 0f) {
     val mid = Color(mid)
     val bottom = Color(bottom)
 
+    /** Always light: this sky's hues, mixed most of the way to warm white (lighter toward the bottom). */
+    fun pale(): Stop = Stop(argb(lerp(top, PALE, 0.68f)), argb(lerp(mid, PALE, 0.74f)), argb(lerp(bottom, PALE, 0.8f)), sun)
+
+    private fun argb(c: Color): Long = c.toArgb().toLong() and 0xFFFFFFFFL
+
     fun sky(phase: Phase, scene: Scene) = Sky(top, mid, bottom, isLight = phase == Phase.DAY, sunAlpha = sun, phase = phase, scene = scene)
+}
+
+/** Settings › Appearance. [PHONE] resolves to [LIGHT] or [DARK] from Android's dark mode. */
+enum class Appearance(val code: Int) {
+    BY_HOUR(0), LIGHT(1), DARK(2), PHONE(3);
+
+    companion object {
+        fun of(code: Int): Appearance = entries.firstOrNull { it.code == code } ?: BY_HOUR
+    }
 }
 
 /** The theme every screen draws its sky from. Set once at the top of each activity. */
 val LocalSkyTheme = staticCompositionLocalOf { SkyTheme.SUNRISE }
+
+/** Settings › Appearance, provided next to [LocalSkyTheme]. */
+val LocalAppearance = staticCompositionLocalOf { Appearance.BY_HOUR }
+
+/** The appearance in force: Match phone becomes light or dark here. */
+@Composable
+fun appearanceNow(): Appearance = when (val a = LocalAppearance.current) {
+    Appearance.PHONE -> if (isSystemInDarkTheme()) Appearance.DARK else Appearance.LIGHT
+    else -> a
+}
+
+/** The alarm list and editor: the theme's sky at [hour], in the chosen appearance. */
+@Composable
+fun skyAt(hour: Int): Sky = LocalSkyTheme.current.forHour(hour, appearanceNow())
+
+/**
+ * Settings, History, the scanner. By the hour keeps the late-evening sky they've always had;
+ * light and dark follow the clock like the list does.
+ */
+@Composable
+fun calmSky(): Sky = appearanceNow().let { a ->
+    if (a == Appearance.BY_HOUR) LocalSkyTheme.current.night else LocalSkyTheme.current.forHour(LocalTime.now().hour, a)
+}
+
+/** Wake checks: the light morning sky, unless the appearance is dark. */
+@Composable
+fun checkSky(): Sky = appearanceNow().let { a ->
+    if (a == Appearance.DARK) LocalSkyTheme.current.forHour(LocalTime.now().hour, a) else LocalSkyTheme.current.morning
+}
+
+/** What Always light mixes night, dawn and dusk toward. */
+private val PALE = Color(0xFFFFF6EC)

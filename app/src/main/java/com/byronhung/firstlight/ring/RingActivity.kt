@@ -33,7 +33,8 @@ class RingActivity : ComponentActivity() {
         val is24Hour = DateFormat.is24HourFormat(this)
         setContent {
             val skyTheme by (application as FirstLightApp).skyTheme.collectAsState()
-            FirstLightTheme(skyTheme) {
+            val appearance by (application as FirstLightApp).appearance.collectAsState()
+            FirstLightTheme(skyTheme, appearance) {
                 RingRoute(controller = controller, is24Hour = is24Hour, onClose = { finishAndRemoveTask() })
             }
         }

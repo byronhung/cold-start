@@ -59,6 +59,7 @@ import com.byronhung.firstlight.ui.theme.AppText
 import com.byronhung.firstlight.ui.theme.LocalSky
 import com.byronhung.firstlight.ui.theme.Motion
 import com.byronhung.firstlight.ui.theme.LocalSkyTheme
+import com.byronhung.firstlight.ui.theme.checkSky
 import com.byronhung.firstlight.ui.theme.Sun
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -85,7 +86,8 @@ class WakeCheckActivity : ComponentActivity() {
         val app = application as FirstLightApp
         setContent {
             val skyTheme by app.skyTheme.collectAsState()
-            FirstLightTheme(skyTheme) {
+            val appearance by app.appearance.collectAsState()
+            FirstLightTheme(skyTheme, appearance) {
                 WakeCheckScreen(
                     check = check,
                     deadline = deadline,
@@ -137,7 +139,7 @@ private fun WakeCheckScreen(check: WakeCheck, deadline: Long, onConfirm: () -> U
     val leftMs = (deadline - now).coerceAtLeast(0)
     val fraction = leftMs.toFloat() / WakeCheck.WINDOW_MS
 
-    SkyBackground(LocalSkyTheme.current.morning) {
+    SkyBackground(checkSky()) {
         val sky = LocalSky.current
         Column(
             Modifier

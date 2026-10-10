@@ -58,7 +58,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val skyTheme by (application as FirstLightApp).skyTheme.collectAsState()
-            FirstLightTheme(skyTheme) {
+            val appearance by (application as FirstLightApp).appearance.collectAsState()
+            FirstLightTheme(skyTheme, appearance) {
                 val nav = rememberNavController()
                 // Plus switching on while the app is open (the debug switch now, Play Billing later)
                 // ends on the thank-you screen. The first value is just the app starting up.

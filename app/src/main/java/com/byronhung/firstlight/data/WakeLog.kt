@@ -43,6 +43,8 @@ data class AppSettings(
     @ColumnInfo(defaultValue = "0") val plusNudgeAt: Long = 0,
     /** Times "Not now" was tapped on the Plus popup. After three it stops for good. */
     @ColumnInfo(defaultValue = "0") val plusNudgeDismissals: Int = 0,
+    /** [com.byronhung.firstlight.ui.theme.Appearance.code]. 0 = by the hour. */
+    @ColumnInfo(defaultValue = "0") val appearance: Int = 0,
 )
 
 /** One solved puzzle round. Adaptive difficulty reads these. */

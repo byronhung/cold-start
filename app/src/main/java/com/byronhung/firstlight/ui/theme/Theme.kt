@@ -15,10 +15,10 @@ private val SunriseScheme = darkColorScheme(
     onSurface = Color(0xFFFFF6EC),
 )
 
-/** [sky]: the theme every screen inside draws its sky from (Settings › Theme). */
+/** [sky]: the theme every screen inside draws its sky from (Settings › Theme); [appearance] its light or dark. */
 @Composable
-fun FirstLightTheme(sky: SkyTheme = SkyTheme.SUNRISE, content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalSkyTheme provides sky) {
+fun FirstLightTheme(sky: SkyTheme = SkyTheme.SUNRISE, appearance: Appearance = Appearance.BY_HOUR, content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalSkyTheme provides sky, LocalAppearance provides appearance) {
         MaterialTheme(colorScheme = SunriseScheme, typography = AppTypography, content = content)
     }
 }

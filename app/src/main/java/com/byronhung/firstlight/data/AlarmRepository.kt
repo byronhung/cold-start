@@ -15,6 +15,7 @@ import com.byronhung.firstlight.puzzle.parseMix
 import com.byronhung.firstlight.puzzle.WakeMethod
 import com.byronhung.firstlight.puzzle.roundsFor
 import com.byronhung.firstlight.ui.theme.SkyTheme
+import com.byronhung.firstlight.ui.theme.Appearance
 import com.byronhung.firstlight.puzzle.planMorning
 import com.byronhung.firstlight.ring.RingSession
 import com.byronhung.firstlight.ring.RoundResultDraft
@@ -58,6 +59,8 @@ class AlarmRepository(
     suspend fun setTheme(theme: SkyTheme) = editSettings { it.copy(theme = theme.code) }
 
     suspend fun setWelcomeDone() = editSettings { it.copy(welcomeDone = true) }
+
+    suspend fun setAppearance(appearance: Appearance) = editSettings { it.copy(appearance = appearance.code) }
 
     /** The Plus popup just showed: start its 10-day wait. */
     suspend fun plusNudgeShown(at: Long = System.currentTimeMillis()) = editSettings { it.copy(plusNudgeAt = at) }
